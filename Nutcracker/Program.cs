@@ -9,7 +9,7 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddSingleton<LedService>();
 builder.Services.AddSingleton<LightshowService>();
-builder.Services.AddHostedService<LightshowService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<LightshowService>());
 
 var app = builder.Build();
 
