@@ -1,0 +1,55 @@
+{
+  "name": "Example Chase Pattern",
+  "description": "A simple red chase pattern across the matrix",
+  "durationMs": 10000,
+  "frames": [
+    {
+      "timestampMs": 0,
+      "effect": "fill",
+      "color": "#000000"
+    },
+    {
+      "timestampMs": 100,
+      "effect": "set",
+      "color": "#FF0000",
+      "leds": [0, 1, 2, 3]
+    },
+    {
+      "timestampMs": 200,
+      "effect": "set",
+      "color": "#FF0000",
+      "leds": [4, 5, 6, 7]
+    },
+    {
+      "timestampMs": 300,
+      "effect": "set",
+      "color": "#FF0000",
+      "leds": [8, 9, 10, 11]
+    },
+    {
+      "timestampMs": 400,
+      "effect": "clear"
+    },
+    {
+      "timestampMs": 500,
+      "effect": "gradient",
+      "startColor": "#FF0000",
+      "endColor": "#0000FF",
+      "leds": [0, 32, 64, 96, 128, 160, 192, 224]
+    },
+    {
+      "timestampMs": 1000,
+      "effect": "fill",
+      "color": "#00FF00"
+    },
+    {
+      "timestampMs": 1500,
+      "effect": "fill",
+      "color": "#0000FF"
+    },
+    {
+      "timestampMs": 2000,
+      "effect": "clear"
+    }
+  ]
+}
