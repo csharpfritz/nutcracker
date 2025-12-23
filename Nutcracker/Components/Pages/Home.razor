@@ -1,0 +1,127 @@
+﻿@page "/"
+@using Nutcracker.Services
+@inject LightshowService LightshowService
+@implements IDisposable
+
+<PageTitle>🎄 Nutcracker Holiday Display</PageTitle>
+
+<div class="christmas-container">
+    <div class="christmas-header">
+        <h1 class="christmas-title">🎄 Nutcracker Holiday Display 🎅</h1>
+        <p class="christmas-subtitle">Bringing Holiday Cheer with Music & Lights!</p>
+    </div>
+
+    <!-- Now Playing Section -->
+    <div class="now-playing-section">
+        <h2 class="section-title">🎵 Now Playing</h2>
+        @if (LightshowService.CurrentLightshow != null)
+        {
+            <div class="now-playing-card">
+                <div class="now-playing-icon">🎶</div>
+                <div class="now-playing-info">
+                    <h3>@LightshowService.CurrentLightshow.Name</h3>
+                    <p class="song-duration">Duration: @FormatDuration(LightshowService.CurrentLightshow.Duration)</p>
+                </div>
+                <div class="playing-animation">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="no-playing-card">
+                <p>❄️ No song currently playing</p>
+            </div>
+        }
+    </div>
+
+    <!-- Queue Section -->
+    <div class="queue-section">
+        <h2 class="section-title">📋 Up Next</h2>
+        @if (queueList.Any())
+        {
+            <div class="queue-list">
+                @foreach (var (show, index) in queueList.Select((s, i) => (s, i)))
+                {
+                    <div class="queue-item">
+                        <span class="queue-number">@(index + 1)</span>
+                        <div class="queue-info">
+                            <strong>@show.Name</strong>
+                            <span class="queue-duration">@FormatDuration(show.Duration)</span>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="empty-queue">
+                <p>🎁 Queue is empty - Add some songs below!</p>
+            </div>
+        }
+    </div>
+
+    <!-- Available Songs Section -->
+    <div class="available-songs-section">
+        <h2 class="section-title">🎼 Available Songs</h2>
+        <div class="songs-grid">
+            @foreach (var show in LightshowService.AvailableLightshows)
+            {
+                <div class="song-card">
+                    <div class="song-icon">🎵</div>
+                    <div class="song-info">
+                        <h4>@show.Name</h4>
+                        <p class="song-duration">@FormatDuration(show.Duration)</p>
+                    </div>
+                    <button class="btn-add" @onclick="() => AddToQueue(show)">Add to Queue</button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<LightshowSettings> queueList = new();
+
+    protected override void OnInitialized()
+    {
+        RefreshQueue();
+        
+        // Subscribe to service events
+        LightshowService.LightshowStarted += OnLightshowChanged;
+        LightshowService.LightshowEnded += OnLightshowChanged;
+        LightshowService.QueueChanged += OnLightshowChanged;
+    }
+
+    private async void OnLightshowChanged(object? sender, EventArgs e)
+    {
+        RefreshQueue();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void RefreshQueue()
+    {
+        queueList = LightshowService.LightshowQueue.ToList();
+    }
+
+    private void AddToQueue(LightshowSettings show)
+    {
+        LightshowService.EnqueueLightshow(show);
+    }
+
+    private string FormatDuration(TimeSpan duration)
+    {
+        return $"{duration.Minutes}:{duration.Seconds:D2}";
+    }
+
+    public void Dispose()
+    {
+        // Unsubscribe from events
+        LightshowService.LightshowStarted -= OnLightshowChanged;
+        LightshowService.LightshowEnded -= OnLightshowChanged;
+        LightshowService.QueueChanged -= OnLightshowChanged;
+    }
+}
