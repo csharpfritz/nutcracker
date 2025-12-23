@@ -11,6 +11,12 @@ builder.Services.AddSingleton<LedService>();
 builder.Services.AddSingleton<LightshowService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<LightshowService>());
 
+// Configure to listen on all interfaces on port 80 when deployed
+if (!builder.Environment.IsDevelopment())
+{
+    builder.WebHost.UseUrls("http://0.0.0.0:80");
+}
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

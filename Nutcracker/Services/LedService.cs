@@ -19,10 +19,8 @@ public class LedService : IDisposable
 	private SpiDevice? _spiDevice;
 	private bool _initialized;
 
-	// LED Matrix Configuration (8x32 = 256 LEDs)
-	private const int GPIO_PIN = 10; // SPI0 MOSI
-	private const int SPI_BUS = 0;
-	private const int SPI_CHIP_SELECT = 0;
+	// LED Strip Configuration
+	private const int GPIO_PIN = 18; // PWM0 - GPIO 18 (Physical Pin 12)
 
 	public LedService(ILogger<LedService> logger, IWebHostEnvironment environment)
 	{
@@ -43,11 +41,11 @@ public class LedService : IDisposable
 		{
 			try
 			{
-				_logger.LogInformation("Initializing LED matrix on GPIO pin {Pin} ({Width}x{Height} = {Count} LEDs)", 
-					GPIO_PIN, _matrixWidth, _matrixHeight, _ledCount);
+				_logger.LogInformation("Initializing LED strip on GPIO {Pin} ({Count} LEDs)", 
+					GPIO_PIN, _ledCount);
 
-				// Create SPI settings for WS2812B
-				var settings = new SpiConnectionSettings(SPI_BUS, SPI_CHIP_SELECT)
+				// Create SPI settings for WS2812B - using SPI as transport for PWM-like timing
+				var settings = new SpiConnectionSettings(0, 0)
 				{
 					ClockFrequency = 2_400_000, // 2.4 MHz for WS2812B timing
 					Mode = SpiMode.Mode0,
@@ -61,14 +59,14 @@ public class LedService : IDisposable
 				_ws2812b = new Ws2812b(_spiDevice, _ledCount);
 
 				_initialized = true;
-				_logger.LogInformation("LED matrix initialized successfully via SPI");
+				_logger.LogInformation("LED strip initialized successfully on GPIO {Pin}", GPIO_PIN);
 
 				// Clear LEDs on startup
 				ClearAllLeds().Wait();
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Failed to initialize LED matrix. Running in mock mode.");
+				_logger.LogError(ex, "Failed to initialize LED strip. Running in mock mode.");
 				_initialized = false;
 			}
 		}

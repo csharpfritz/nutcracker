@@ -7,6 +7,13 @@
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
   </PropertyGroup>
 
+  <!-- Raspberry Pi ARM64 Linux Release Configuration -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <RuntimeIdentifier>linux-arm64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Iot.Device.Bindings" Version="3.2.0" />
   </ItemGroup>
