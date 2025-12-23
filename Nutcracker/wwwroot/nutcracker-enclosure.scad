@@ -6,12 +6,11 @@
 // === CUSTOMIZATION PARAMETERS ===
 // Adjust these to fit your specific components
 
-// LED Matrix dimensions (8x32 matrix - wider horizontal layout)
-// Note: Typical 8x32 WS2812B matrix is ~256mm wide, but splitting into sections for smaller printer
-// If your matrix is flexible/bendable or comes in segments, adjust accordingly
-led_matrix_width = 200;     // Width in mm (adjust to your actual matrix size)
-led_matrix_height = 50;     // Height in mm (adjust to your actual matrix size)
-led_matrix_depth = 10;      // Depth/thickness in mm
+// LED Matrix dimensions (Flexible 8x32 matrix)
+// Actual dimensions: 320mm (32cm) x 80mm (8cm)
+led_matrix_width = 320;     // Width in mm (32cm / 12.6 inch)
+led_matrix_height = 80;     // Height in mm (8cm / 3.15 inch)
+led_matrix_depth = 2;       // Depth/thickness in mm (flexible, very thin)
 
 // Raspberry Pi Zero dimensions
 pi_zero_width = 65;         // Width in mm
@@ -36,6 +35,11 @@ add_cable_channels = true;  // Add cable management channels
 lid_type = "snap";          // "snap" or "screw"
 display_tilt_angle = 15;    // Angle of LED matrix tilt (degrees) - plaque style
 
+// Curved display parameters (for flexible matrix)
+use_curved_display = true;  // Use cylindrical curve instead of flat plaque
+curve_radius = 120;         // Radius of curve in mm (smaller = tighter curve)
+curve_segments = 60;        // Resolution of curve (higher = smoother)
+
 // === CALCULATED DIMENSIONS ===
 // Main box holds battery and Pi Zero
 internal_width = max(battery_width, pi_zero_width) + component_spacing * 2;
@@ -50,13 +54,31 @@ box_height = internal_height + wall_thickness;
 plaque_depth = 25; // How far the plaque extends forward
 plaque_tilt_extra = led_matrix_height * sin(display_tilt_angle); // Additional height from tilt
 
+// Curved display calculations
+curve_angle = (led_matrix_width / curve_radius) * (180 / PI); // Arc angle in degrees
+curve_chord_width = 2 * curve_radius * sin(curve_angle / 2); // Straight-line width of curved display
+curve_arc_depth = curve_radius * (1 - cos(curve_angle / 2)); // How far curve extends forward
+
 echo("Box outer dimensions (W x L x H):", box_width, "x", box_length, "x", box_height);
 echo("Internal volume:", internal_width, "x", internal_length, "x", internal_height);
-echo("Display plaque dimensions (W x D x H):", led_matrix_width + wall_thickness * 2 + component_spacing * 2, "x", plaque_depth, "x", led_matrix_height + wall_thickness * 2);
+if (use_curved_display) {
+    echo("=== CURVED DISPLAY INFO ===");
+    echo("Matrix arc length:", led_matrix_width, "mm");
+    echo("Curve radius:", curve_radius, "mm");
+    echo("Curve angle:", curve_angle, "degrees");
+    echo("Display chord width:", curve_chord_width, "mm");
+    echo("Display arc depth:", curve_arc_depth, "mm");
+} else {
+    echo("Display plaque dimensions (W x D x H):", led_matrix_width + wall_thickness * 2 + component_spacing * 2, "x", plaque_depth, "x", led_matrix_height + wall_thickness * 2);
+}
 echo("*** FLASHFORGE AD5X BUILD VOLUME CHECK (220x220x220mm) ***");
 echo("Main box fits:", box_width <= 220 && box_length <= 220 && box_height <= 220 ? "YES" : "NO - TOO LARGE!");
 echo("Lid fits:", box_width <= 220 && box_length <= 220 ? "YES" : "NO - TOO LARGE!");
-echo("Plaque fits:", (led_matrix_width + wall_thickness * 2 + component_spacing * 2) <= 220 && plaque_depth <= 220 ? "YES" : "NO - TOO LARGE!");
+if (use_curved_display) {
+    echo("Curved display fits:", curve_chord_width <= 220 && curve_arc_depth <= 220 && (led_matrix_height + wall_thickness * 2) <= 220 ? "YES" : "NO - TOO LARGE!");
+} else {
+    echo("Plaque fits:", (led_matrix_width + wall_thickness * 2 + component_spacing * 2) <= 220 && plaque_depth <= 220 ? "YES" : "NO - TOO LARGE!");
+}
 
 // === MAIN BOX MODULE ===
 module main_box() {
@@ -112,7 +134,79 @@ module main_box() {
         cube([pi_zero_width, pi_zero_length, 1]);
 }
 
-// === TILTED DISPLAY PLAQUE MODULE ===
+// === CURVED DISPLAY MODULE (for flexible matrix) ===
+module curved_display() {
+    matrix_channel_depth = led_matrix_depth + 1; // Channel to hold flexible matrix
+    total_height = led_matrix_height + wall_thickness * 2;
+    
+    difference() {
+        union() {
+            // Curved front face
+            rotate([90, 0, 0])
+            rotate([0, 0, 90])
+            linear_extrude(height = total_height, center = false)
+            difference() {
+                // Outer arc
+                arc_segment(curve_radius + wall_thickness, curve_angle, curve_segments);
+                // Inner arc (channel for matrix)
+                arc_segment(curve_radius, curve_angle, curve_segments);
+            }
+            
+            // Top edge cap
+            translate([0, 0, total_height - wall_thickness])
+            rotate([90, 0, 0])
+            rotate([0, 0, 90])
+            linear_extrude(height = wall_thickness)
+                arc_segment(curve_radius + wall_thickness, curve_angle, curve_segments);
+            
+            // Bottom edge cap
+            rotate([90, 0, 0])
+            rotate([0, 0, 90])
+            linear_extrude(height = wall_thickness)
+                arc_segment(curve_radius + wall_thickness, curve_angle, curve_segments);
+            
+            // Side caps
+            for (side = [0, 1]) {
+                mirror([side, 0, 0])
+                translate([curve_chord_width/2, -(curve_radius + wall_thickness) * cos(curve_angle/2), 0])
+                rotate([0, 0, 90 - curve_angle/2])
+                cube([wall_thickness, wall_thickness, total_height]);
+            }
+            
+            // Mounting base
+            translate([-curve_chord_width/2 - wall_thickness, -curve_arc_depth - wall_thickness, -wall_thickness])
+                cube([curve_chord_width + wall_thickness * 2, wall_thickness * 2, wall_thickness]);
+        }
+        
+        // Wire pass-through holes at bottom
+        translate([-8, -curve_arc_depth - wall_thickness - 1, -wall_thickness - 1])
+            cube([16, wall_thickness + 2, wall_thickness + 2]);
+    }
+    
+    // Internal support ribs for matrix (every ~50mm along arc)
+    num_ribs = floor(led_matrix_width / 50);
+    for (i = [1 : num_ribs - 1]) {
+        rib_angle = -curve_angle/2 + (i * curve_angle / num_ribs);
+        rotate([0, 0, rib_angle])
+        translate([0, -curve_radius - wall_thickness/2, wall_thickness])
+            cube([0.8, wall_thickness, led_matrix_height]);
+    }
+}
+
+// Helper module to create arc segment
+module arc_segment(radius, angle, segments) {
+    step_angle = angle / segments;
+    points = concat(
+        [[0, 0]],
+        [for (i = [0:segments]) 
+            [radius * cos(-angle/2 + i * step_angle), 
+             radius * sin(-angle/2 + i * step_angle)]
+        ]
+    );
+    polygon(points);
+}
+
+// === FLAT DISPLAY PLAQUE MODULE (original - kept for reference) ===
 module display_plaque() {
     plaque_width = led_matrix_width + wall_thickness * 2 + component_spacing * 2;
     plaque_height_base = led_matrix_height * cos(display_tilt_angle) + wall_thickness * 2;
@@ -208,18 +302,29 @@ main_box();
 translate([box_width + 10, 0, 0])
     lid();
 
-translate([box_width/2 - (led_matrix_width + wall_thickness * 2 + component_spacing * 2)/2, 
-           box_length + 20, 
-           0])
-    rotate([-display_tilt_angle, 0, 0])
-        display_plaque();
+if (use_curved_display) {
+    translate([110, box_length + 60, 0])
+        curved_display();
+} else {
+    translate([box_width/2 - (led_matrix_width + wall_thickness * 2 + component_spacing * 2)/2, 
+               box_length + 20, 
+               0])
+        rotate([-display_tilt_angle, 0, 0])
+            display_plaque();
+}
 
 // For assembly preview, uncomment below and comment above
 // main_box();
 // translate([0, 0, box_height])
 //     lid();
-// // Display plaque mounted on front
-// translate([box_width/2 - (led_matrix_width + wall_thickness * 2 + component_spacing * 2)/2, 
-//            -plaque_depth, 
-//            box_height])
-//     display_plaque();
+// if (use_curved_display) {
+//     // Curved display mounted on front
+//     translate([box_width/2, -curve_arc_depth, box_height])
+//         curved_display();
+// } else {
+//     // Flat display plaque mounted on front
+//     translate([box_width/2 - (led_matrix_width + wall_thickness * 2 + component_spacing * 2)/2, 
+//                -plaque_depth, 
+//                box_height])
+//         display_plaque();
+// }
