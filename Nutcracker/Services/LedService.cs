@@ -1,6 +1,9 @@
+using System.Device.Spi;
 using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using Iot.Device.Graphics;
+using Iot.Device.Ws28xx;
 
 namespace Nutcracker.Services;
 
@@ -12,16 +15,14 @@ public class LedService : IDisposable
 	private readonly int _ledCount;
 	private readonly int _matrixWidth;
 	private readonly int _matrixHeight;
-	private IntPtr _ledStrip = IntPtr.Zero;
+	private Ws2812b? _ws2812b;
+	private SpiDevice? _spiDevice;
 	private bool _initialized;
 
 	// LED Matrix Configuration (8x32 = 256 LEDs)
-	private const int GPIO_PIN = 18;
-	private const int LED_FREQ_HZ = 800000;
-	private const int DMA = 10;
-	private const int LED_BRIGHTNESS = 255;
-	private const int LED_INVERT = 0;
-	private const int LED_CHANNEL = 0;
+	private const int GPIO_PIN = 10; // SPI0 MOSI
+	private const int SPI_BUS = 0;
+	private const int SPI_CHIP_SELECT = 0;
 
 	public LedService(ILogger<LedService> logger, IWebHostEnvironment environment)
 	{
@@ -45,11 +46,25 @@ public class LedService : IDisposable
 				_logger.LogInformation("Initializing LED matrix on GPIO pin {Pin} ({Width}x{Height} = {Count} LEDs)", 
 					GPIO_PIN, _matrixWidth, _matrixHeight, _ledCount);
 
-				// Initialize WS281x LED strip
-				// Note: This requires rpi_ws281x library to be installed
-				// For now, we'll simulate initialization
+				// Create SPI settings for WS2812B
+				var settings = new SpiConnectionSettings(SPI_BUS, SPI_CHIP_SELECT)
+				{
+					ClockFrequency = 2_400_000, // 2.4 MHz for WS2812B timing
+					Mode = SpiMode.Mode0,
+					DataBitLength = 8
+				};
+
+				// Create SPI device
+				_spiDevice = SpiDevice.Create(settings);
+
+				// Initialize WS2812B controller
+				_ws2812b = new Ws2812b(_spiDevice, _ledCount);
+
 				_initialized = true;
-				_logger.LogInformation("LED matrix initialized successfully");
+				_logger.LogInformation("LED matrix initialized successfully via SPI");
+
+				// Clear LEDs on startup
+				ClearAllLeds().Wait();
 			}
 			catch (Exception ex)
 			{
@@ -254,7 +269,7 @@ public class LedService : IDisposable
 
 	private void SetLedColor(int index, Color color)
 	{
-		if (!_initialized)
+		if (!_initialized || _ws2812b == null)
 		{
 			// Mock mode - just log occasionally
 			if (index % 50 == 0)
@@ -264,17 +279,27 @@ public class LedService : IDisposable
 			return;
 		}
 
-		// TODO: When rpi_ws281x library is added, implement actual LED setting
-		// For example: ws2811_led_set(_ledStrip, LED_CHANNEL, index, color.ToArgb());
+		// Set the LED color using the Image property
+		if (index >= 0 && index < _ledCount)
+		{
+			_ws2812b.Image.SetPixel(index, 0, color);
+		}
 	}
 
 	private void UpdateDisplay()
 	{
-		if (!_initialized)
+		if (!_initialized || _ws2812b == null)
 			return;
 
-		// TODO: When rpi_ws281x library is added, implement actual display update
-		// For example: ws2811_render(_ledStrip);
+		try
+		{
+			// Send the updated image to the LED strip
+			_ws2812b.Update();
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Error updating LED display");
+		}
 	}
 
 	private async Task ClearAllLeds()
@@ -337,21 +362,31 @@ public class LedService : IDisposable
 
 	public void Dispose()
 	{
-		if (_initialized && _ledStrip != IntPtr.Zero)
+		if (_initialized)
 		{
 			_logger.LogInformation("Disposing LED service and clearing display");
 			
-			// Clear all LEDs before disposing
-			for (int i = 0; i < _ledCount; i++)
+			try
 			{
-				SetLedColor(i, Color.Black);
+				// Clear all LEDs before disposing
+				if (_ws2812b != null)
+				{
+					for (int i = 0; i < _ledCount; i++)
+					{
+						SetLedColor(i, Color.Black);
+					}
+					UpdateDisplay();
+				}
 			}
-			UpdateDisplay();
+			catch (Exception ex)
+			{
+				_logger.LogWarning(ex, "Error clearing LEDs during disposal");
+			}
 
-			// TODO: When rpi_ws281x library is added, implement cleanup
-			// For example: ws2811_fini(_ledStrip); ws2811_destroy(_ledStrip);
-			
-			_ledStrip = IntPtr.Zero;
+			// Dispose resources
+			_spiDevice?.Dispose();
+			_spiDevice = null;
+			_ws2812b = null;
 			_initialized = false;
 		}
 	}

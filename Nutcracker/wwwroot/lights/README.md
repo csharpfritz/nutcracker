@@ -5,9 +5,10 @@ LED pattern files define the light animations for the 8x32 LED matrix. Patterns 
 ## Matrix Layout
 
 - **Dimensions**: 8 rows × 32 columns = 256 LEDs total
-- **GPIO Pin**: 18
+- **GPIO Pin**: 10 (SPI0 MOSI)
 - **LED Indexing**: 0-255 (0 = top-left, 31 = top-right, 32 = second row left, etc.)
 - **LED Type**: WS2812B/NeoPixel addressable LEDs
+- **Interface**: SPI (requires SPI to be enabled on Raspberry Pi)
 
 ## Pattern File Structure
 
