@@ -1,7 +1,9 @@
 ﻿@page "/"
 @using Nutcracker.Services
 @inject LightshowService LightshowService
+@inject LedService LedService
 @implements IDisposable
+@rendermode InteractiveServer
 
 <PageTitle>🎄 Nutcracker Holiday Display</PageTitle>
 
@@ -9,6 +11,11 @@
     <div class="christmas-header">
         <h1 class="christmas-title">🎄 Nutcracker Holiday Display 🎅</h1>
         <p class="christmas-subtitle">Bringing Holiday Cheer with Music & Lights!</p>
+    </div>
+
+    <!-- LED Test Section -->
+    <div class="test-section">
+        <button class="btn-test" @onclick="TestLeds">🔦 Test LEDs</button>
     </div>
 
     <!-- Now Playing Section -->
@@ -118,6 +125,21 @@
     private void SkipCurrentShow()
     {
         LightshowService.SkipCurrentShow();
+    }
+
+    private async Task TestLeds()
+    {
+        try
+        {
+            Console.WriteLine("TestLeds button clicked - starting test...");
+            await LedService.TestLeds();
+            Console.WriteLine("TestLeds completed successfully");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"TestLeds failed: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+        }
     }
 
     private string FormatDuration(TimeSpan duration)

@@ -19,12 +19,34 @@ fi
 git clone https://github.com/jgarff/rpi_ws281x.git
 cd rpi_ws281x
 
-# Build the library
+# Build the library with shared library support
 scons
 
+# Check what was built
+echo "Built files:"
+ls -la *.a *.so* 2>/dev/null || echo "No shared library found, will create one"
+
+# Create shared library from static library if needed
+if [ ! -f "libws2811.so" ] && [ -f "libws2811.a" ]; then
+    echo "Creating shared library from static library..."
+    gcc -shared -Wl,--whole-archive libws2811.a -Wl,--no-whole-archive -o libws2811.so.1.0.0
+    ln -sf libws2811.so.1.0.0 libws2811.so.1
+    ln -sf libws2811.so.1 libws2811.so
+fi
+
 # Install the library
-sudo cp libws2811.so.1 /usr/local/lib/
-sudo ln -sf /usr/local/lib/libws2811.so.1 /usr/local/lib/libws2811.so
+if [ -f "libws2811.so.1.0.0" ]; then
+    sudo cp libws2811.so.1.0.0 /usr/local/lib/
+    sudo ln -sf /usr/local/lib/libws2811.so.1.0.0 /usr/local/lib/libws2811.so.1
+    sudo ln -sf /usr/local/lib/libws2811.so.1 /usr/local/lib/libws2811.so
+elif [ -f "libws2811.so.1" ]; then
+    sudo cp libws2811.so.1 /usr/local/lib/
+    sudo ln -sf /usr/local/lib/libws2811.so.1 /usr/local/lib/libws2811.so
+else
+    echo "ERROR: Could not create shared library"
+    exit 1
+fi
+
 sudo ldconfig
 
 # Copy header for reference

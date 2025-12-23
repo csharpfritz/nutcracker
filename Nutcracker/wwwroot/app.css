@@ -39,6 +39,40 @@ html, body {
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
 }
 
+/* Test Section */
+.test-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 30px;
+    text-align: center;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    border: 2px solid #FFD700;
+}
+
+.btn-test {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+    border: none;
+    padding: 16px 32px;
+    border-radius: 10px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.btn-test:hover {
+    background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
+    transform: scale(1.05);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+}
+
+.btn-test:active {
+    transform: scale(0.98);
+}
+
 /* Section Titles */
 .section-title {
     color: #FFD700;

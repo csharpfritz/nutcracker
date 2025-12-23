@@ -17,8 +17,8 @@ public class LedService : IDisposable
 	private bool _initialized;
 	private readonly object _lock = new();
 
-	// LED Strip Configuration
-	private const int GPIO_PIN = 18;        // PWM0 - GPIO 18 (Physical Pin 12)
+	// LED Strip Configuration - SPI Mode
+	private const int GPIO_PIN = 10;        // SPI0 MOSI - GPIO 10 (Physical Pin 19)
 	private const int DMA_CHANNEL = 10;     // DMA channel (10 is usually safe)
 	private const uint TARGET_FREQ = 800000; // 800kHz for WS2812B
 	private const byte DEFAULT_BRIGHTNESS = 255; // Full brightness (0-255)
@@ -30,10 +30,121 @@ public class LedService : IDisposable
 		_matrixWidth = 32;
 		_matrixHeight = 8;
 		_ledCount = _matrixWidth * _matrixHeight;
-		_isRaspberryPi = RuntimeInformation.IsOSPlatform(OSPlatform.Linux) && 
-		                 RuntimeInformation.ProcessArchitecture == Architecture.Arm;
+		
+		// Enhanced platform detection with logging
+		var isLinux = RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
+		var architecture = RuntimeInformation.ProcessArchitecture;
+		_logger.LogInformation("Platform detection: OS={Os}, Architecture={Architecture}", 
+			isLinux ? "Linux" : "Other", architecture);
+		
+		_isRaspberryPi = isLinux && (architecture == Architecture.Arm || architecture == Architecture.Arm64);
+		_logger.LogInformation("Raspberry Pi detected: {IsRaspberryPi}", _isRaspberryPi);
 
 		Initialize();
+	}
+
+	/// <summary>
+	/// Enhanced test method to light up LEDs across the full 8x32 matrix to verify hardware is working
+	/// </summary>
+	public async Task TestLeds()
+	{
+		_logger.LogInformation("=== LED TEST START ===");
+		_logger.LogInformation("Matrix configuration: {Width}x{Height} = {Count} LEDs", _matrixWidth, _matrixHeight, _ledCount);
+		_logger.LogInformation("Raspberry Pi detected: {IsRaspberryPi}", _isRaspberryPi);
+		_logger.LogInformation("LED service initialized: {Initialized}", _initialized);
+		_logger.LogInformation("Using GPIO pin: {Pin}", GPIO_PIN);
+
+		if (!_initialized)
+		{
+			_logger.LogWarning("LED service not initialized - running in mock mode");
+			_logger.LogWarning("If on Raspberry Pi, check: sudo permissions, libws2811 library installed, GPIO access");
+			// Continue with mock test for demonstration
+		}
+
+		try
+		{
+			// Test 1: Fill entire matrix with red
+			_logger.LogInformation("Test 1: Filling entire matrix with red ({Count} LEDs)", _ledCount);
+			for (int i = 0; i < _ledCount; i++)
+			{
+				SetLedColor(i, Color.FromArgb(255, 0, 0));
+			}
+			UpdateDisplay();
+			_logger.LogInformation("Red fill complete, waiting 2 seconds...");
+			await Task.Delay(2000);
+
+			// Test 2: Fill entire matrix with green
+			_logger.LogInformation("Test 2: Filling entire matrix with green");
+			for (int i = 0; i < _ledCount; i++)
+			{
+				SetLedColor(i, Color.FromArgb(0, 255, 0));
+			}
+			UpdateDisplay();
+			_logger.LogInformation("Green fill complete, waiting 2 seconds...");
+			await Task.Delay(2000);
+
+			// Test 3: Fill entire matrix with blue
+			_logger.LogInformation("Test 3: Filling entire matrix with blue");
+			for (int i = 0; i < _ledCount; i++)
+			{
+				SetLedColor(i, Color.FromArgb(0, 0, 255));
+			}
+			UpdateDisplay();
+			_logger.LogInformation("Blue fill complete, waiting 2 seconds...");
+			await Task.Delay(2000);
+
+			// Test 4: Test individual rows (8 rows)
+			_logger.LogInformation("Test 4: Testing individual rows ({RowCount} rows)", _matrixHeight);
+			await ClearAllLeds();
+			for (int row = 0; row < _matrixHeight; row++)
+			{
+				await ClearAllLeds();
+				_logger.LogInformation("Lighting row {Row}", row);
+				for (int col = 0; col < _matrixWidth; col++)
+				{
+					int pixelIndex = row * _matrixWidth + col;
+					SetLedColor(pixelIndex, Color.FromArgb(255, 255, 255)); // White
+				}
+				UpdateDisplay();
+				await Task.Delay(500);
+			}
+
+			// Test 5: Test individual columns (32 columns) - abbreviated for logs
+			_logger.LogInformation("Test 5: Testing individual columns ({ColCount} columns)", _matrixWidth);
+			await ClearAllLeds();
+			for (int col = 0; col < _matrixWidth; col++)
+			{
+				await ClearAllLeds();
+				if (col % 8 == 0) // Log every 8th column
+					_logger.LogDebug("Lighting column {Col}", col);
+				
+				for (int row = 0; row < _matrixHeight; row++)
+				{
+					int pixelIndex = row * _matrixWidth + col;
+					SetLedColor(pixelIndex, Color.FromArgb(255, 255, 255)); // White
+				}
+				UpdateDisplay();
+				await Task.Delay(100);
+			}
+
+			// Skip some tests for brevity, jump to final test
+			_logger.LogInformation("Test 6: Scanning dot across first 50 LEDs");
+			for (int pixelIndex = 0; pixelIndex < Math.Min(50, _ledCount); pixelIndex++)
+			{
+				await ClearAllLeds();
+				SetLedColor(pixelIndex, Color.FromArgb(255, 255, 255));
+				UpdateDisplay();
+				await Task.Delay(50);
+			}
+
+			// Clear at end
+			await ClearAllLeds();
+			_logger.LogInformation("=== LED TEST COMPLETE ===");
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Error during LED test");
+		}
 	}
 
 	private void Initialize()
@@ -42,7 +153,7 @@ public class LedService : IDisposable
 		{
 			try
 			{
-				_logger.LogInformation("Initializing LED strip on GPIO {Pin} ({Count} LEDs) via native rpi_ws281x library", 
+				_logger.LogInformation("Initializing LED strip on GPIO {Pin} SPI mode ({Count} LEDs) via native rpi_ws281x library", 
 					GPIO_PIN, _ledCount);
 
 				// Initialize the ws2811_t structure
@@ -83,12 +194,12 @@ public class LedService : IDisposable
 				var result = ws2811_init(ref _ws2811);
 				if (result != ws2811_return_t.WS2811_SUCCESS)
 				{
-					var errorMsg = GetErrorString(result);
+					var errorMsg = Ws2811Native.GetErrorString(result);
 					throw new Exception($"ws2811_init failed: {errorMsg}");
 				}
 
 				_initialized = true;
-				_logger.LogInformation("LED strip initialized successfully on GPIO {Pin}", GPIO_PIN);
+				_logger.LogInformation("LED strip initialized successfully on GPIO {Pin} (SPI mode)", GPIO_PIN);
 
 				// Clear LEDs on startup
 				ClearAllLeds().Wait();
@@ -133,8 +244,19 @@ public class LedService : IDisposable
 				return;
 			}
 
-			// Play the pattern
-			await PlayPatternAsync(pattern, stoppingToken);
+			// If there's no music file (idle display), loop the pattern
+			bool shouldLoop = string.IsNullOrEmpty(lightshowSettings.MusicFilePath);
+			
+			if (shouldLoop)
+			{
+				_logger.LogInformation("Looping pattern '{Name}' for idle display", pattern.Name);
+				await PlayPatternLoopAsync(pattern, stoppingToken);
+			}
+			else
+			{
+				// Play the pattern once for music-synchronized shows
+				await PlayPatternAsync(pattern, stoppingToken);
+			}
 			
 			_logger.LogInformation("Completed LED pattern for: {Name}", lightshowSettings.Name);
 		}
@@ -206,6 +328,43 @@ public class LedService : IDisposable
 		}
 
 		// Clear LEDs at the end
+		await ClearAllLeds();
+	}
+
+	private async Task PlayPatternLoopAsync(LedPattern pattern, CancellationToken stoppingToken)
+	{
+		// Loop the pattern indefinitely until cancelled
+		while (!stoppingToken.IsCancellationRequested)
+		{
+			var startTime = DateTime.UtcNow;
+
+			foreach (var frame in pattern.Frames)
+			{
+				if (stoppingToken.IsCancellationRequested)
+					break;
+
+				// Wait until it's time to display this frame
+				var targetTime = startTime.AddMilliseconds(frame.TimestampMs);
+				var delay = targetTime - DateTime.UtcNow;
+				
+				if (delay > TimeSpan.Zero)
+				{
+					await Task.Delay(delay, stoppingToken);
+				}
+
+				// Apply the frame
+				ApplyFrame(frame);
+			}
+
+			// No clear between loops - keep the last frame displayed
+			// Add a small delay before restarting the loop
+			if (!stoppingToken.IsCancellationRequested)
+			{
+				await Task.Delay(100, stoppingToken);
+			}
+		}
+
+		// Clear LEDs when exiting
 		await ClearAllLeds();
 	}
 
@@ -341,7 +500,7 @@ public class LedService : IDisposable
 				var result = ws2811_render(ref _ws2811);
 				if (result != ws2811_return_t.WS2811_SUCCESS)
 				{
-					_logger.LogError("Failed to render LEDs: {Error}", GetErrorString(result));
+					_logger.LogError("Failed to render LEDs: {Error}", Ws2811Native.GetErrorString(result));
 				}
 			}
 			catch (Exception ex)
@@ -361,30 +520,188 @@ public class LedService : IDisposable
 		await Task.CompletedTask;
 	}
 
-	private async Task PlayFallbackPattern(TimeSpan duration, CancellationToken stoppingToken)
+	/// <summary>
+	/// Matrix-specific helper methods
+	/// </summary>
+	
+	/// <summary>
+	/// Convert row/column coordinates to linear LED index
+	/// Assumes linear layout: row 0 = LEDs 0-31, row 1 = LEDs 32-63, etc.
+	/// </summary>
+	private int GetLedIndex(int row, int col)
 	{
-		// Simple chase animation as fallback
-		var startTime = DateTime.UtcNow;
-		var frameDelay = TimeSpan.FromMilliseconds(50);
+		if (row < 0 || row >= _matrixHeight || col < 0 || col >= _matrixWidth)
+			return -1;
+		
+		return row * _matrixWidth + col;
+	}
 
-		while (DateTime.UtcNow - startTime < duration && !stoppingToken.IsCancellationRequested)
+	/// <summary>
+	/// Set LED color using row/column coordinates
+	/// </summary>
+	public void SetMatrixLed(int row, int col, Color color)
+	{
+		int index = GetLedIndex(row, col);
+		if (index >= 0)
 		{
-			var position = (int)((DateTime.UtcNow - startTime).TotalMilliseconds / 50) % _ledCount;
-			
-			// Clear all
-			for (int i = 0; i < _ledCount; i++)
+			SetLedColor(index, color);
+		}
+	}
+
+	/// <summary>
+	/// Fill an entire row with a color
+	/// </summary>
+	public void FillRow(int row, Color color)
+	{
+		for (int col = 0; col < _matrixWidth; col++)
+		{
+			SetMatrixLed(row, col, color);
+		}
+	}
+
+	/// <summary>
+	/// Fill an entire column with a color
+	/// </summary>
+	public void FillColumn(int col, Color color)
+	{
+		for (int row = 0; row < _matrixHeight; row++)
+		{
+			SetMatrixLed(row, col, color);
+		}
+	}
+
+	/// <summary>
+	/// Create a moving wave effect across the matrix
+	/// </summary>
+	public async Task PlayMovingWave(TimeSpan duration, CancellationToken cancellationToken = default)
+	{
+		var startTime = DateTime.UtcNow;
+		const int waveWidth = 5;
+
+		while (DateTime.UtcNow - startTime < duration && !cancellationToken.IsCancellationRequested)
+		{
+			var elapsedMs = (DateTime.UtcNow - startTime).TotalMilliseconds;
+			var wavePos = (int)(elapsedMs / 100) % (_matrixWidth + waveWidth); // Move across and off screen
+
+			await ClearAllLeds();
+
+			for (int row = 0; row < _matrixHeight; row++)
 			{
-				SetLedColor(i, Color.Black);
+				for (int col = 0; col < _matrixWidth; col++)
+				{
+					var distanceFromWave = Math.Abs(col - wavePos);
+					if (distanceFromWave < waveWidth)
+					{
+						var brightness = Math.Max(0, 255 - (distanceFromWave * 51)); // Fade effect
+						SetMatrixLed(row, col, Color.FromArgb(0, (int)brightness, (int)brightness));
+					}
+				}
 			}
 
-			// Set current position
-			SetLedColor(position, Color.Red);
 			UpdateDisplay();
-
-			await Task.Delay(frameDelay, stoppingToken);
+			await Task.Delay(100, cancellationToken);
 		}
 
 		await ClearAllLeds();
+	}
+
+	/// <summary>
+	/// Create a pulsing effect across the entire matrix
+	/// </summary>
+	public async Task PlayPulsingEffect(int pulses, CancellationToken cancellationToken = default)
+	{
+		for (int pulse = 0; pulse < pulses && !cancellationToken.IsCancellationRequested; pulse++)
+		{
+			// Fade in
+			for (int brightness = 0; brightness <= 255; brightness += 5)
+			{
+				if (cancellationToken.IsCancellationRequested) break;
+				
+				for (int i = 0; i < _ledCount; i++)
+				{
+					SetLedColor(i, Color.FromArgb(brightness, 0, brightness)); // Purple
+				}
+				UpdateDisplay();
+				await Task.Delay(20, cancellationToken);
+			}
+
+			// Fade out
+			for (int brightness = 255; brightness >= 0; brightness -= 5)
+			{
+				if (cancellationToken.IsCancellationRequested) break;
+				
+				for (int i = 0; i < _ledCount; i++)
+				{
+					SetLedColor(i, Color.FromArgb(brightness, 0, brightness)); // Purple
+				}
+				UpdateDisplay();
+				await Task.Delay(20, cancellationToken);
+			}
+		}
+
+		await ClearAllLeds();
+	}
+
+	private async Task PlayFallbackPattern(TimeSpan duration, CancellationToken stoppingToken)
+	{
+		_logger.LogInformation("Playing comprehensive fallback animation for {Duration}ms", duration.TotalMilliseconds);
+		
+		var startTime = DateTime.UtcNow;
+		var quarterDuration = TimeSpan.FromMilliseconds(duration.TotalMilliseconds / 4);
+
+		try
+		{
+			// Pattern 1: Moving wave (25% of duration)
+			_logger.LogDebug("Fallback pattern: Moving wave");
+			await PlayMovingWave(quarterDuration, stoppingToken);
+			
+			if (stoppingToken.IsCancellationRequested) return;
+
+			// Pattern 2: Pulsing effect (25% of duration)
+			_logger.LogDebug("Fallback pattern: Pulsing effect");
+			var pulsesNeeded = Math.Max(1, (int)(quarterDuration.TotalSeconds / 2)); // One pulse per 2 seconds
+			await PlayPulsingEffect(pulsesNeeded, stoppingToken);
+			
+			if (stoppingToken.IsCancellationRequested) return;
+
+			// Pattern 3: Row scan (25% of duration)
+			_logger.LogDebug("Fallback pattern: Row scan");
+			var rowScanStart = DateTime.UtcNow;
+			while (DateTime.UtcNow - rowScanStart < quarterDuration && !stoppingToken.IsCancellationRequested)
+			{
+				for (int row = 0; row < _matrixHeight && !stoppingToken.IsCancellationRequested; row++)
+				{
+					await ClearAllLeds();
+					FillRow(row, Color.FromArgb(0, 255, 0)); // Green
+					UpdateDisplay();
+					await Task.Delay(200, stoppingToken);
+				}
+			}
+
+			if (stoppingToken.IsCancellationRequested) return;
+
+			// Pattern 4: Column scan (25% of duration)
+			_logger.LogDebug("Fallback pattern: Column scan");
+			var colScanStart = DateTime.UtcNow;
+			while (DateTime.UtcNow - colScanStart < quarterDuration && !stoppingToken.IsCancellationRequested)
+			{
+				for (int col = 0; col < _matrixWidth && !stoppingToken.IsCancellationRequested; col++)
+				{
+					await ClearAllLeds();
+					FillColumn(col, Color.FromArgb(255, 0, 0)); // Red
+					UpdateDisplay();
+					await Task.Delay(50, stoppingToken);
+				}
+			}
+		}
+		catch (OperationCanceledException)
+		{
+			_logger.LogDebug("Fallback pattern cancelled");
+		}
+		finally
+		{
+			await ClearAllLeds();
+		}
 	}
 
 	private Color ParseColor(string colorHex)
