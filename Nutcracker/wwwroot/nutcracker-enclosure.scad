@@ -7,8 +7,10 @@
 // Adjust these to fit your specific components
 
 // LED Matrix dimensions (8x32 matrix - wider horizontal layout)
-led_matrix_width = 256;     // Width in mm (32 pixels wide, ~8mm per pixel)
-led_matrix_height = 64;     // Height in mm (8 pixels tall, ~8mm per pixel)
+// Note: Typical 8x32 WS2812B matrix is ~256mm wide, but splitting into sections for smaller printer
+// If your matrix is flexible/bendable or comes in segments, adjust accordingly
+led_matrix_width = 200;     // Width in mm (adjust to your actual matrix size)
+led_matrix_height = 50;     // Height in mm (adjust to your actual matrix size)
 led_matrix_depth = 10;      // Depth/thickness in mm
 
 // Raspberry Pi Zero dimensions
@@ -50,6 +52,11 @@ plaque_tilt_extra = led_matrix_height * sin(display_tilt_angle); // Additional h
 
 echo("Box outer dimensions (W x L x H):", box_width, "x", box_length, "x", box_height);
 echo("Internal volume:", internal_width, "x", internal_length, "x", internal_height);
+echo("Display plaque dimensions (W x D x H):", led_matrix_width + wall_thickness * 2 + component_spacing * 2, "x", plaque_depth, "x", led_matrix_height + wall_thickness * 2);
+echo("*** FLASHFORGE AD5X BUILD VOLUME CHECK (220x220x220mm) ***");
+echo("Main box fits:", box_width <= 220 && box_length <= 220 && box_height <= 220 ? "YES" : "NO - TOO LARGE!");
+echo("Lid fits:", box_width <= 220 && box_length <= 220 ? "YES" : "NO - TOO LARGE!");
+echo("Plaque fits:", (led_matrix_width + wall_thickness * 2 + component_spacing * 2) <= 220 && plaque_depth <= 220 ? "YES" : "NO - TOO LARGE!");
 
 // === MAIN BOX MODULE ===
 module main_box() {
