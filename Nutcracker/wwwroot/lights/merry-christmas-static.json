@@ -1,0 +1,126 @@
+{
+  "name": "Merry Christmas Static Display",
+  "description": "Static display showing MERRY XMAS with festive red and green colors and twinkling corner stars",
+  "durationMs": 300000,
+  "frames": [
+    {
+      "timestampMs": 0,
+      "effect": "fill",
+      "color": "#000000"
+    },
+    {
+      "timestampMs": 50,
+      "effect": "set",
+      "color": "#FF0000",
+      "leds": [
+        34, 35, 38, 39, 42, 43, 46, 47,
+        66, 67, 70, 71, 74, 75, 78, 79,
+        98, 99, 102, 103, 106, 107, 110, 111,
+        130, 131, 134, 135, 138, 139, 142, 143,
+        162, 163, 166, 167, 170, 171, 174, 175
+      ]
+    },
+    {
+      "timestampMs": 100,
+      "effect": "set",
+      "color": "#00FF00",
+      "leds": [
+        36, 37, 40, 41, 44, 45, 48, 49,
+        68, 69, 72, 73, 76, 77, 80, 81,
+        100, 101, 104, 105, 108, 109, 112, 113,
+        132, 133, 136, 137, 140, 141, 144, 145,
+        164, 165, 168, 169, 172, 173, 176, 177
+      ]
+    },
+    {
+      "timestampMs": 150,
+      "effect": "set",
+      "color": "#FF0000",
+      "leds": [
+        197, 200, 203, 206, 209, 212, 215,
+        229, 232, 235, 238, 241, 244, 247
+      ]
+    },
+    {
+      "timestampMs": 200,
+      "effect": "set",
+      "color": "#00FF00",
+      "leds": [
+        198, 199, 201, 202, 204, 205, 207, 208, 210, 211, 213, 214, 216,
+        230, 231, 233, 234, 236, 237, 239, 240, 242, 243, 245, 246, 248
+      ]
+    },
+    {
+      "timestampMs": 300,
+      "effect": "set",
+      "color": "#FFD700",
+      "leds": [0, 31]
+    },
+    {
+      "timestampMs": 800,
+      "effect": "set",
+      "color": "#FFFFFF",
+      "leds": [0, 31]
+    },
+    {
+      "timestampMs": 1300,
+      "effect": "set",
+      "color": "#FFD700",
+      "leds": [0, 31]
+    },
+    {
+      "timestampMs": 1800,
+      "effect": "set",
+      "color": "#000000",
+      "leds": [0, 31]
+    },
+    {
+      "timestampMs": 2300,
+      "effect": "set",
+      "color": "#FFD700",
+      "leds": [224, 255]
+    },
+    {
+      "timestampMs": 2800,
+      "effect": "set",
+      "color": "#FFFFFF",
+      "leds": [224, 255]
+    },
+    {
+      "timestampMs": 3300,
+      "effect": "set",
+      "color": "#FFD700",
+      "leds": [224, 255]
+    },
+    {
+      "timestampMs": 3800,
+      "effect": "set",
+      "color": "#000000",
+      "leds": [224, 255]
+    },
+    {
+      "timestampMs": 4300,
+      "effect": "set",
+      "color": "#FFD700",
+      "leds": [0, 31, 224, 255]
+    },
+    {
+      "timestampMs": 4800,
+      "effect": "set",
+      "color": "#FFFFFF",
+      "leds": [0, 31, 224, 255]
+    },
+    {
+      "timestampMs": 5300,
+      "effect": "set",
+      "color": "#FFD700",
+      "leds": [0, 31, 224, 255]
+    },
+    {
+      "timestampMs": 5800,
+      "effect": "set",
+      "color": "#000000",
+      "leds": [0, 31, 224, 255]
+    }
+  ]
+}

@@ -85,6 +85,9 @@ public class LedService : IDisposable
 		{
 			_logger.LogInformation("Starting LED pattern for: {Name}", lightshowSettings.Name);
 			
+			// Clear the display first to ensure clean slate
+			await ClearAllLeds();
+			
 			// Load pattern from disk
 			var pattern = await LoadPatternAsync(lightshowSettings.LightPatternFilePath);
 			if (pattern == null)

@@ -38,6 +38,10 @@ public class LightshowService(LedService ledService, ILogger<LightshowService> l
 		new("Wizards in Winter", new TimeSpan(0, 3, 5), "wwwroot/music/trans-siberian-orchestra-wizards-in-winter.mp3", "wwwroot/lights/wizards-in-winter.json")
 	];
 
+	// Static idle display when no shows are queued
+	private static readonly LightshowSettings IdleDisplay = 
+		new("Merry Christmas", new TimeSpan(0, 5, 0), "", "lights/merry-christmas-static.json");
+
 	// Implementation of the LightshowService
 	protected override Task ExecuteAsync(CancellationToken stoppingToken) =>  PlaylightShows(stoppingToken);
 
@@ -110,11 +114,63 @@ public class LightshowService(LedService ledService, ILogger<LightshowService> l
 			}
 			else
 			{
-				// No lightshows in the queue, wait for a short period before checking again
-				await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
+				// No lightshows in the queue, play the idle display
+				await PlayIdleDisplay(stoppingToken);
 			}
 		}
 
+	}
+
+	private async Task PlayIdleDisplay(CancellationToken stoppingToken)
+	{
+		logger.LogInformation("Queue empty, starting idle display: {Name}", IdleDisplay.Name);
+		CurrentLightshow = IdleDisplay;
+		QueueChanged?.Invoke(this, EventArgs.Empty);
+
+		using var idleCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+
+		try
+		{
+			// Start the LED pattern
+			var ledTask = Task.Run(async () =>
+			{
+				await ledService.PlayLedPattern(IdleDisplay, idleCts.Token);
+			}, idleCts.Token);
+
+			// Check periodically if a new show has been queued
+			while (!idleCts.Token.IsCancellationRequested)
+			{
+				// If something is in the queue, cancel the idle display
+				if (!LightshowQueue.IsEmpty)
+				{
+					logger.LogInformation("New show queued, stopping idle display");
+					idleCts.Cancel();
+					break;
+				}
+
+				// Wait a short period before checking again
+				await Task.Delay(TimeSpan.FromMilliseconds(500), idleCts.Token);
+			}
+
+			// Wait for LED task to complete
+			try
+			{
+				await ledTask;
+			}
+			catch (OperationCanceledException)
+			{
+				// Expected when cancelled
+			}
+		}
+		catch (OperationCanceledException)
+		{
+			// Expected when service is stopping
+		}
+		finally
+		{
+			CurrentLightshow = null;
+			QueueChanged?.Invoke(this, EventArgs.Empty);
+		}
 	}
 }
 
