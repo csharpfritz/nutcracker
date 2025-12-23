@@ -1,9 +1,7 @@
-using System.Device.Spi;
 using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Text.Json;
-using Iot.Device.Graphics;
-using Iot.Device.Ws28xx;
+using static Nutcracker.Services.Ws2811Native;
 
 namespace Nutcracker.Services;
 
@@ -15,12 +13,15 @@ public class LedService : IDisposable
 	private readonly int _ledCount;
 	private readonly int _matrixWidth;
 	private readonly int _matrixHeight;
-	private Ws2812b? _ws2812b;
-	private SpiDevice? _spiDevice;
+	private ws2811_t _ws2811;
 	private bool _initialized;
+	private readonly object _lock = new();
 
 	// LED Strip Configuration
-	private const int GPIO_PIN = 18; // PWM0 - GPIO 18 (Physical Pin 12)
+	private const int GPIO_PIN = 18;        // PWM0 - GPIO 18 (Physical Pin 12)
+	private const int DMA_CHANNEL = 10;     // DMA channel (10 is usually safe)
+	private const uint TARGET_FREQ = 800000; // 800kHz for WS2812B
+	private const byte DEFAULT_BRIGHTNESS = 255; // Full brightness (0-255)
 
 	public LedService(ILogger<LedService> logger, IWebHostEnvironment environment)
 	{
@@ -41,22 +42,50 @@ public class LedService : IDisposable
 		{
 			try
 			{
-				_logger.LogInformation("Initializing LED strip on GPIO {Pin} ({Count} LEDs)", 
+				_logger.LogInformation("Initializing LED strip on GPIO {Pin} ({Count} LEDs) via native rpi_ws281x library", 
 					GPIO_PIN, _ledCount);
 
-				// Create SPI settings for WS2812B - using SPI as transport for PWM-like timing
-				var settings = new SpiConnectionSettings(0, 0)
+				// Initialize the ws2811_t structure
+				_ws2811 = new ws2811_t
 				{
-					ClockFrequency = 2_400_000, // 2.4 MHz for WS2812B timing
-					Mode = SpiMode.Mode0,
-					DataBitLength = 8
+					freq = TARGET_FREQ,
+					dmanum = DMA_CHANNEL,
+					channel = new ws2811_channel_t[RPI_PWM_CHANNELS]
 				};
 
-				// Create SPI device
-				_spiDevice = SpiDevice.Create(settings);
+				// Configure channel 0 (the one we're using)
+				_ws2811.channel[0] = new ws2811_channel_t
+				{
+					gpionum = GPIO_PIN,
+					count = _ledCount,
+					invert = 0,
+					brightness = DEFAULT_BRIGHTNESS,
+					strip_type = (int)WS2811_STRIP_GRB, // Most WS2812B use GRB order
+					leds = Marshal.AllocHGlobal(_ledCount * 4) // Allocate LED buffer (4 bytes per LED)
+				};
 
-				// Initialize WS2812B controller
-				_ws2812b = new Ws2812b(_spiDevice, _ledCount);
+				// Clear the LED buffer
+				for (int i = 0; i < _ledCount * 4; i++)
+				{
+					Marshal.WriteByte(_ws2811.channel[0].leds, i, 0);
+				}
+
+				// Configure channel 1 (unused)
+				_ws2811.channel[1] = new ws2811_channel_t
+				{
+					gpionum = 0,
+					count = 0,
+					invert = 0,
+					brightness = 0
+				};
+
+				// Initialize the library
+				var result = ws2811_init(ref _ws2811);
+				if (result != ws2811_return_t.WS2811_SUCCESS)
+				{
+					var errorMsg = GetErrorString(result);
+					throw new Exception($"ws2811_init failed: {errorMsg}");
+				}
 
 				_initialized = true;
 				_logger.LogInformation("LED strip initialized successfully on GPIO {Pin}", GPIO_PIN);
@@ -67,7 +96,16 @@ public class LedService : IDisposable
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Failed to initialize LED strip. Running in mock mode.");
+				_logger.LogWarning("Make sure to install the library: sudo apt-get install libws2811-dev");
+				_logger.LogWarning("And run with sudo or proper permissions for GPIO access");
 				_initialized = false;
+				
+				// Free allocated memory if initialization failed
+				if (_ws2811.channel != null && _ws2811.channel[0].leds != IntPtr.Zero)
+				{
+					Marshal.FreeHGlobal(_ws2811.channel[0].leds);
+					_ws2811.channel[0].leds = IntPtr.Zero;
+				}
 			}
 		}
 		else
@@ -270,7 +308,7 @@ public class LedService : IDisposable
 
 	private void SetLedColor(int index, Color color)
 	{
-		if (!_initialized || _ws2812b == null)
+		if (!_initialized)
 		{
 			// Mock mode - just log occasionally
 			if (index % 50 == 0)
@@ -280,26 +318,36 @@ public class LedService : IDisposable
 			return;
 		}
 
-		// Set the LED color using the Image property
-		if (index >= 0 && index < _ledCount)
+		lock (_lock)
 		{
-			_ws2812b.Image.SetPixel(index, 0, color);
+			// Set the LED color in the buffer
+			if (index >= 0 && index < _ledCount && _ws2811.channel[0].leds != IntPtr.Zero)
+			{
+				Ws2811Native.SetLedColor(_ws2811.channel[0].leds, index, color.R, color.G, color.B);
+			}
 		}
 	}
 
 	private void UpdateDisplay()
 	{
-		if (!_initialized || _ws2812b == null)
+		if (!_initialized)
 			return;
 
-		try
+		lock (_lock)
 		{
-			// Send the updated image to the LED strip
-			_ws2812b.Update();
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error updating LED display");
+			try
+			{
+				// Render the LED buffer to the strip
+				var result = ws2811_render(ref _ws2811);
+				if (result != ws2811_return_t.WS2811_SUCCESS)
+				{
+					_logger.LogError("Failed to render LEDs: {Error}", GetErrorString(result));
+				}
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error updating LED display");
+			}
 		}
 	}
 
@@ -367,28 +415,46 @@ public class LedService : IDisposable
 		{
 			_logger.LogInformation("Disposing LED service and clearing display");
 			
-			try
+			lock (_lock)
 			{
-				// Clear all LEDs before disposing
-				if (_ws2812b != null)
+				try
 				{
+					// Clear all LEDs before disposing
 					for (int i = 0; i < _ledCount; i++)
 					{
-						SetLedColor(i, Color.Black);
+						if (_ws2811.channel[0].leds != IntPtr.Zero)
+						{
+							Ws2811Native.SetLedColor(_ws2811.channel[0].leds, i, 0, 0, 0);
+						}
 					}
-					UpdateDisplay();
+					
+					// Final render to show cleared state
+					ws2811_render(ref _ws2811);
 				}
-			}
-			catch (Exception ex)
-			{
-				_logger.LogWarning(ex, "Error clearing LEDs during disposal");
-			}
+				catch (Exception ex)
+				{
+					_logger.LogWarning(ex, "Error clearing LEDs during disposal");
+				}
 
-			// Dispose resources
-			_spiDevice?.Dispose();
-			_spiDevice = null;
-			_ws2812b = null;
-			_initialized = false;
+				try
+				{
+					// Cleanup native library
+					ws2811_fini(ref _ws2811);
+					
+					// Free allocated LED buffer
+					if (_ws2811.channel[0].leds != IntPtr.Zero)
+					{
+						Marshal.FreeHGlobal(_ws2811.channel[0].leds);
+						_ws2811.channel[0].leds = IntPtr.Zero;
+					}
+				}
+				catch (Exception ex)
+				{
+					_logger.LogWarning(ex, "Error during native library cleanup");
+				}
+				
+				_initialized = false;
+			}
 		}
 	}
 }

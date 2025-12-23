@@ -15,12 +15,23 @@ public class LightshowService(LedService ledService, ILogger<LightshowService> l
 
 	public ConcurrentQueue<LightshowSettings> LightshowQueue { get; } = new();
 
+	private CancellationTokenSource? _skipTokenSource;
+
 	public LightshowSettings? CurrentLightshow { get; private set; } = null!;
 
 	public void EnqueueLightshow(LightshowSettings lightshow)
 	{
 		LightshowQueue.Enqueue(lightshow);
 		QueueChanged?.Invoke(this, EventArgs.Empty);
+	}
+
+	public void SkipCurrentShow()
+	{
+		if (CurrentLightshow != null && _skipTokenSource != null && !_skipTokenSource.IsCancellationRequested)
+		{
+			logger.LogInformation($"Skipping current lightshow: {CurrentLightshow.Name}");
+			_skipTokenSource.Cancel();
+		}
 	}
 
 	public static readonly LightshowSettings[] AvailableLightshows =
@@ -57,6 +68,9 @@ public class LightshowService(LedService ledService, ILogger<LightshowService> l
 				QueueChanged?.Invoke(this, EventArgs.Empty);
 				LightshowStarted?.Invoke(this, EventArgs.Empty);
 
+				// Create a new skip token source for this show
+				_skipTokenSource = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+
 				try
 				{
 					// Start playing the music using mplayer
@@ -79,19 +93,19 @@ public class LightshowService(LedService ledService, ILogger<LightshowService> l
 					// Start the LED light show in parallel
 					var ledTask = Task.Run(async () =>
 					{
-						await ledService.PlayLedPattern(lightshowSettings, stoppingToken);
-					}, stoppingToken);
+						await ledService.PlayLedPattern(lightshowSettings, _skipTokenSource.Token);
+					}, _skipTokenSource.Token);
 
 					// Wait for the music to finish (use duration as max wait time)
 					var musicTask = Task.Run(async () =>
 					{
-						await musicProcess.WaitForExitAsync(stoppingToken);
-					}, stoppingToken);
+						await musicProcess.WaitForExitAsync(_skipTokenSource.Token);
+					}, _skipTokenSource.Token);
 
 					// Wait for both tasks to complete or use the duration as a timeout
 					await Task.WhenAny(
 						Task.WhenAll(musicTask, ledTask),
-						Task.Delay(lightshowSettings.Duration.Add(TimeSpan.FromSeconds(2)), stoppingToken)
+						Task.Delay(lightshowSettings.Duration.Add(TimeSpan.FromSeconds(2)), _skipTokenSource.Token)
 					);
 
 					// Ensure the process is stopped
@@ -102,12 +116,18 @@ public class LightshowService(LedService ledService, ILogger<LightshowService> l
 
 					logger.LogInformation($"Finished lightshow: {lightshowSettings.Name}");
 				}
+				catch (OperationCanceledException)
+				{
+					logger.LogInformation($"Lightshow skipped: {lightshowSettings.Name}");
+				}
 				catch (Exception ex)
 				{
 					logger.LogError(ex, $"Error playing lightshow: {lightshowSettings.Name}");
 				}
 				finally
 				{
+					_skipTokenSource?.Dispose();
+					_skipTokenSource = null;
 					CurrentLightshow = null;
 					LightshowEnded?.Invoke(this, EventArgs.Empty);
 				}

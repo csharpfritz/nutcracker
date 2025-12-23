@@ -11,10 +11,10 @@ builder.Services.AddSingleton<LedService>();
 builder.Services.AddSingleton<LightshowService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<LightshowService>());
 
-// Configure to listen on all interfaces on port 80 when deployed
+// Configure to listen on all interfaces on port 3000 when deployed
 if (!builder.Environment.IsDevelopment())
 {
-    builder.WebHost.UseUrls("http://0.0.0.0:80");
+    builder.WebHost.UseUrls("http://0.0.0.0:3000");
 }
 
 var app = builder.Build();

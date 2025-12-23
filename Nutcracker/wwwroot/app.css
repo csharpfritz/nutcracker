@@ -98,6 +98,37 @@ html, body {
     margin: 0;
 }
 
+/* Control Buttons */
+.control-buttons {
+    margin-top: 15px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.btn-skip {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+    color: white;
+    border: none;
+    padding: 14px 28px;
+    border-radius: 10px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.btn-skip:hover {
+    background: linear-gradient(135deg, #ee5a6f 0%, #d63447 100%);
+    transform: scale(1.05);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+}
+
+.btn-skip:active {
+    transform: scale(0.98);
+}
+
 /* Playing Animation */
 .playing-animation {
     display: flex;

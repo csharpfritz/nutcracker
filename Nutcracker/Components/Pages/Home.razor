@@ -29,6 +29,9 @@
                     <span></span>
                 </div>
             </div>
+            <div class="control-buttons">
+                <button class="btn-skip" @onclick="SkipCurrentShow">⏭️ Skip</button>
+            </div>
         }
         else
         {
@@ -110,6 +113,11 @@
     private void AddToQueue(LightshowSettings show)
     {
         LightshowService.EnqueueLightshow(show);
+    }
+
+    private void SkipCurrentShow()
+    {
+        LightshowService.SkipCurrentShow();
     }
 
     private string FormatDuration(TimeSpan duration)

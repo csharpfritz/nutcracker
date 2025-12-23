@@ -14,9 +14,7 @@
     <Optimize>true</Optimize>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Iot.Device.Bindings" Version="3.2.0" />
-  </ItemGroup>
+  <!-- No external packages needed - using native P/Invoke to rpi_ws281x library -->
 
   <!-- Remote deployment target -->
   <Target Name="DeployToPi" AfterTargets="Publish">
