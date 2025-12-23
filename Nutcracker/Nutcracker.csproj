@@ -18,4 +18,10 @@
     <PackageReference Include="Iot.Device.Bindings" Version="3.2.0" />
   </ItemGroup>
 
+  <!-- Remote deployment target -->
+  <Target Name="DeployToPi" AfterTargets="Publish">
+    <Exec Command="scp -r $(PublishDir)* jfritz@nutcracker-1.local:/home/jfritz/www/" ContinueOnError="false" />
+    <Exec Command="ssh jfritz@nutcracker-1.local &quot;chmod +x /home/jfritz/www/Nutcracker&quot;" ContinueOnError="false" />
+  </Target>
+
 </Project>
