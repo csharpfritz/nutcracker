@@ -16,6 +16,7 @@ public class LedService : IDisposable
 	private ws2811_t _ws2811;
 	private bool _initialized;
 	private readonly object _lock = new();
+	private byte _currentBrightness = 204; // Track current brightness (0-255)
 
 	// LED Strip Configuration - SPI Mode
 	private const int GPIO_PIN = 10;        // SPI0 MOSI - GPIO 10 (Physical Pin 19)
@@ -30,6 +31,7 @@ public class LedService : IDisposable
 		_matrixWidth = 32;
 		_matrixHeight = 8;
 		_ledCount = _matrixWidth * _matrixHeight;
+		_currentBrightness = DEFAULT_BRIGHTNESS; // Initialize brightness
 		
 		// Enhanced platform detection with logging
 		var isLinux = RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
@@ -170,7 +172,7 @@ public class LedService : IDisposable
 					gpionum = GPIO_PIN,
 					count = _ledCount,
 					invert = 0,
-					brightness = DEFAULT_BRIGHTNESS,
+					brightness = _currentBrightness,
 					strip_type = (int)WS2811_STRIP_GRB, // Most WS2812B use GRB order
 					leds = Marshal.AllocHGlobal(_ledCount * 4) // Allocate LED buffer (4 bytes per LED)
 				};
@@ -223,6 +225,40 @@ public class LedService : IDisposable
 		{
 			_logger.LogWarning("Not running on Raspberry Pi. LED control will use mock mode.");
 			_initialized = false;
+		}
+	}
+
+	/// <summary>
+	/// Set the brightness of the LED strip (0-100%)
+	/// </summary>
+	public void SetBrightness(int brightnessPercent)
+	{
+		// Convert from percentage (0-100) to byte value (0-255)
+		var brightness = (byte)Math.Clamp((brightnessPercent * 255) / 100, 0, 255);
+		_currentBrightness = brightness;
+		
+		_logger.LogInformation($"LED brightness set to: {brightnessPercent}% (raw: {brightness}/255)");
+		
+		if (_initialized && _ws2811.channel != null)
+		{
+			try
+			{
+				lock (_lock)
+				{
+					_ws2811.channel[0].brightness = _currentBrightness;
+					// Render the update immediately to apply brightness change
+					ws2811_render(ref _ws2811);
+				}
+				_logger.LogInformation("Brightness updated successfully");
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Failed to update LED brightness");
+			}
+		}
+		else
+		{
+			_logger.LogWarning("LED service not initialized - brightness change will be applied when initialized");
 		}
 	}
 

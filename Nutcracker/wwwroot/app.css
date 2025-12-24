@@ -268,6 +268,92 @@ html, body {
     border: 2px solid rgba(255, 255, 255, 0.2);
 }
 
+/* Brightness Control */
+.brightness-control {
+    margin-top: 20px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    border: 2px solid rgba(255, 215, 0, 0.3);
+}
+
+.brightness-control label {
+    display: block;
+    color: #FFD700;
+    font-size: 1.1rem;
+    font-weight: bold;
+    margin-bottom: 12px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.brightness-control input[type="range"] {
+    width: 100%;
+    height: 8px;
+    background: linear-gradient(to right, #FFD700 0%, #FFD700 80%, rgba(255, 255, 255, 0.2) 80%, rgba(255, 255, 255, 0.2) 100%);
+    border-radius: 5px;
+    outline: none;
+    -webkit-appearance: none;
+    margin: 10px 0;
+    cursor: pointer;
+}
+
+.brightness-control input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    background: linear-gradient(135deg, #FFA500 0%, #FF8C00 100%);
+    cursor: pointer;
+    border-radius: 50%;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+    transition: all 0.2s;
+    border: 3px solid #fff;
+}
+
+.brightness-control input[type="range"]::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    background: linear-gradient(135deg, #FFA500 0%, #FF8C00 100%);
+    cursor: pointer;
+    border-radius: 50%;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+    transition: all 0.2s;
+    border: 3px solid #fff;
+}
+
+.brightness-control input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.5);
+}
+
+.brightness-control input[type="range"]::-moz-range-thumb:hover {
+    transform: scale(1.15);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.5);
+}
+
+.brightness-control input[type="range"]::-webkit-slider-thumb:active {
+    transform: scale(1.05);
+}
+
+.brightness-control input[type="range"]::-moz-range-thumb:active {
+    transform: scale(1.05);
+}
+
+.brightness-value {
+    display: inline-block;
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+    color: #000;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 1.1rem;
+    margin-left: 10px;
+    min-width: 60px;
+    text-align: center;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
 .btn-skip {
     background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
     color: white;

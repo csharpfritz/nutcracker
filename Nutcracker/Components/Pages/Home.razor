@@ -52,6 +52,17 @@
                        @onchange="UpdateVolume" />
                 <span class="volume-value">@volume%</span>
             </div>
+            <div class="brightness-control">
+                <label for="brightness-slider">💡 LED Brightness</label>
+                <input type="range" 
+                       id="brightness-slider" 
+                       min="0" 
+                       max="100" 
+                       @bind="brightness" 
+                       @bind:event="oninput"
+                       @onchange="UpdateBrightness" />
+                <span class="brightness-value">@brightness%</span>
+            </div>
             <div class="control-buttons">
                 <button class="btn-skip" @onclick="SkipCurrentShow">⏭️ Skip</button>
             </div>
@@ -113,6 +124,7 @@
     private List<LightshowSettings> queueList = new();
     private bool showSettings = false;
     private int volume = 70; // Default volume at 70%
+    private int brightness = 80; // Default brightness at 80%
 
     protected override void OnInitialized()
     {
@@ -153,6 +165,11 @@
     private void UpdateVolume()
     {
         LightshowService.SetVolume(volume);
+    }
+
+    private void UpdateBrightness()
+    {
+        LedService.SetBrightness(brightness);
     }
 
     private async Task TestLeds()
