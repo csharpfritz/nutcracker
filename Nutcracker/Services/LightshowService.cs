@@ -78,7 +78,7 @@ public class LightshowService(LedService ledService, ILogger<LightshowService> l
 
 	public static readonly LightshowSettings[] AvailableLightshows =
 	[
-		new("Santa Claus Is Comin To Town", new TimeSpan(0, 4, 28), "wwwroot/music/Bruce Springsteen - Santa Claus Is Comin To Town (Official Audio).mp3", "wwwroot/lights/santa-claus-is-comin-to-town.json"),
+		new("Santa Claus Is Comin To Town", new TimeSpan(0, 4, 28), "wwwroot/music/Bruce Springsteen - Santa Claus Is Comin To Town (Official Audio).mp3", "wwwroot/lights/bruce-springsteen-santa-claus.json"),
 		new("Deck the Halls", new TimeSpan(0, 1, 14), "wwwroot/music/deck-the-halls-christmas-bells-129141.mp3", "wwwroot/lights/deck-the-halls.json"),
 		new("Grandma Got Run Over By A Reindeer", new TimeSpan(0, 3, 24), "wwwroot/music/Elmo & Patsy - Grandma Got Run Over By A Reindeer.mp3", "wwwroot/lights/grandma-got-run-over.json"),
 		new("Rudolph the Red-Nosed Reindeer", new TimeSpan(0, 3, 8), "wwwroot/music/Gene Autry - Rudolph the Red-Nosed Reindeer (Audio).mp3", "wwwroot/lights/rudolph.json"),

@@ -145,9 +145,13 @@ wwwroot/lights/*.json - Light pattern definitions (accessed via web root)
 ### Adding a New Lightshow
 1. Create music file in `wwwroot/music/`
 2. Create corresponding pattern file in `wwwroot/lights/`
-3. Add to queue via UI or configuration
-4. Pattern format should include timing, LED indices, and colors
-5. Ensure mplayer can access the file path on the Pi
+3. **Update the `AvailableLightshows` array in `Services/LightshowService.cs`** with the new show:
+   - Add a new entry with Name, Duration (TimeSpan), MusicFilePath, and LightPatternFilePath
+   - Use the format: `new("Song Name", new TimeSpan(hours, minutes, seconds), "wwwroot/music/filename.mp3", "wwwroot/lights/filename.json")`
+   - Ensure paths match the actual file locations
+4. Add to queue via UI or configuration
+5. Pattern format should include timing, LED indices, and colors
+6. Ensure mplayer can access the file path on the Pi
 
 ### Adding New LED Patterns
 - Use JSON format with timestamps
@@ -324,6 +328,8 @@ You MUST generate JSON files matching this exact schema:
 - Lowercase with hyphens: `deck-the-halls.json`
 - No spaces, no special characters except hyphens
 - Save to `Nutcracker/wwwroot/lights/{song-name}.json`
+
+**CRITICAL: After creating the lightshow file, you MUST update the `AvailableLightshows` array in `Services/LightshowService.cs`** to register the new show so it appears in the UI.
 
 **Output summary:**
 ```
