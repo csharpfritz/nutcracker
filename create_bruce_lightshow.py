@@ -76,8 +76,10 @@ frames.append({
 
 print("Generating frames...")
 
-# Generate beat-synced animation
+# Generate beat-synced animation with smoother transitions
 pattern_cycle = 0
+last_big_effect = 0
+
 for i, beat_ms in enumerate(beat_times_ms):
     if beat_ms > duration_ms:
         break
@@ -85,9 +87,13 @@ for i, beat_ms in enumerate(beat_times_ms):
     energy = get_energy_at_time(beat_ms)
     pattern_cycle = i % 8
     
-    # Every beat: pulse the bottom row
+    # Avoid effects too close together
+    if beat_ms - last_big_effect < 200:
+        continue
+    
+    # Every beat: pulse the bottom or top row (no full clears)
     if i % 2 == 0:  # Strong beats
-        # Red flash on bottom
+        # Red pulse on bottom
         frames.append({
             "timestampMs": beat_ms,
             "effect": "set",
@@ -95,21 +101,15 @@ for i, beat_ms in enumerate(beat_times_ms):
             "leds": bottom_row
         })
         
-        # Fade out
+        # Fade out (dim, don't clear completely)
         frames.append({
-            "timestampMs": beat_ms + 100,
+            "timestampMs": beat_ms + 150,
             "effect": "set",
-            "color": "#660000",
-            "leds": bottom_row
-        })
-        
-        frames.append({
-            "timestampMs": beat_ms + 200,
-            "effect": "clear",
+            "color": "#330000",
             "leds": bottom_row
         })
     else:  # Weak beats
-        # White flash on top
+        # White pulse on top
         frames.append({
             "timestampMs": beat_ms,
             "effect": "set",
@@ -117,70 +117,88 @@ for i, beat_ms in enumerate(beat_times_ms):
             "leds": top_row
         })
         
+        # Fade out
         frames.append({
-            "timestampMs": beat_ms + 100,
-            "effect": "clear",
+            "timestampMs": beat_ms + 150,
+            "effect": "set",
+            "color": "#333333",
             "leds": top_row
         })
     
-    # Every 8 beats: big visual effect
+    # Every 16 beats: bigger flash (but don't use fill)
     if i > 0 and i % 16 == 0:
-        # Full flash
-        frames.append({
-            "timestampMs": beat_ms,
-            "effect": "fill",
-            "color": "#CC0000"
-        })
-        
-        frames.append({
-            "timestampMs": beat_ms + 150,
-            "effect": "fill",
-            "color": "#CCCCCC"
-        })
-        
-        frames.append({
-            "timestampMs": beat_ms + 300,
-            "effect": "fill",
-            "color": "#000000"
-        })
-    
-    # Every 32 beats: column sweep effect
-    if i > 0 and i % 32 == 0 and i < len(beat_times_ms) - 16:
-        sweep_start = beat_ms
-        # Sweep columns left to right over 8 beats
-        for col in range(0, WIDTH, 4):
-            sweep_time = sweep_start + int(col * 100)
-            if sweep_time < duration_ms:
-                col_leds = [xy_to_led(col + offset, y) for offset in range(min(4, WIDTH - col)) for y in range(HEIGHT)]
-                frames.append({
-                    "timestampMs": sweep_time,
-                    "effect": "set",
-                    "color": "#CC0000" if col % 8 == 0 else "#CCCCCC",
-                    "leds": col_leds
-                })
-        
-        # Clear after sweep
-        clear_time = sweep_start + 3200
-        if clear_time < duration_ms:
-            frames.append({
-                "timestampMs": clear_time,
-                "effect": "fill",
-                "color": "#000000"
-            })
-    
-    # Alternating columns effect during high energy sections
-    if energy > 0.7 and i % 4 == 0:
+        last_big_effect = beat_ms
+        # Flash borders bright
+        border_leds = top_row + bottom_row
         frames.append({
             "timestampMs": beat_ms,
             "effect": "set",
             "color": "#CC0000",
-            "leds": even_columns if pattern_cycle % 2 == 0 else odd_columns
+            "leds": border_leds
+        })
+        
+        frames.append({
+            "timestampMs": beat_ms + 100,
+            "effect": "set",
+            "color": "#CCCCCC",
+            "leds": border_leds
         })
         
         frames.append({
             "timestampMs": beat_ms + 200,
-            "effect": "fill",
-            "color": "#000000"
+            "effect": "set",
+            "color": "#660000",
+            "leds": border_leds
+        })
+    
+    # Every 32 beats: column wave effect
+    if i > 0 and i % 32 == 0 and i < len(beat_times_ms) - 16:
+        last_big_effect = beat_ms
+        sweep_start = beat_ms
+        # Wave effect - light up columns progressively
+        for col in range(0, WIDTH, 2):
+            sweep_time = sweep_start + int(col * 80)
+            if sweep_time < duration_ms:
+                col_leds = [xy_to_led(col, y) for y in range(HEIGHT)]
+                if col + 1 < WIDTH:
+                    col_leds.extend([xy_to_led(col + 1, y) for y in range(HEIGHT)])
+                
+                frames.append({
+                    "timestampMs": sweep_time,
+                    "effect": "set",
+                    "color": "#CC0000" if col % 4 == 0 else "#CCCCCC",
+                    "leds": col_leds
+                })
+                
+                # Dim previous columns
+                if col > 0:
+                    prev_leds = [xy_to_led(col - 2, y) for y in range(HEIGHT)]
+                    if col - 1 >= 0:
+                        prev_leds.extend([xy_to_led(col - 1, y) for y in range(HEIGHT)])
+                    
+                    frames.append({
+                        "timestampMs": sweep_time + 40,
+                        "effect": "set",
+                        "color": "#330000",
+                        "leds": prev_leds
+                    })
+    
+    # Alternating effect during very high energy sections
+    if energy > 0.75 and i % 6 == 0:
+        last_big_effect = beat_ms
+        target_columns = even_columns if pattern_cycle % 2 == 0 else odd_columns
+        frames.append({
+            "timestampMs": beat_ms,
+            "effect": "set",
+            "color": "#CC0000",
+            "leds": target_columns
+        })
+        
+        frames.append({
+            "timestampMs": beat_ms + 250,
+            "effect": "set",
+            "color": "#330000",
+            "leds": target_columns
         })
 
 # Final frame - fade to black

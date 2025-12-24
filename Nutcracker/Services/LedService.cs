@@ -16,13 +16,13 @@ public class LedService : IDisposable
 	private ws2811_t _ws2811;
 	private bool _initialized;
 	private readonly object _lock = new();
-	private byte _currentBrightness = 204; // Track current brightness (0-255)
+	private byte _currentBrightness = 26; // Track current brightness (0-255), start at 10%
 
 	// LED Strip Configuration - SPI Mode
 	private const int GPIO_PIN = 10;        // SPI0 MOSI - GPIO 10 (Physical Pin 19)
 	private const int DMA_CHANNEL = 10;     // DMA channel (10 is usually safe)
 	private const uint TARGET_FREQ = 800000; // 800kHz for WS2812B
-	private const byte DEFAULT_BRIGHTNESS = 13; // 5% brightness (0-255)
+	private const byte DEFAULT_BRIGHTNESS = 26; // 10% brightness (0-255)
 
 	public LedService(ILogger<LedService> logger, IWebHostEnvironment environment)
 	{
@@ -229,6 +229,15 @@ public class LedService : IDisposable
 	}
 
 	/// <summary>
+	/// Get the current brightness level (0-100%)
+	/// </summary>
+	public int GetBrightness()
+	{
+		// Convert from byte value (0-255) to percentage (0-100)
+		return (_currentBrightness * 100) / 255;
+	}
+
+	/// <summary>
 	/// Set the brightness of the LED strip (0-100%)
 	/// </summary>
 	public void SetBrightness(int brightnessPercent)
@@ -361,6 +370,9 @@ public class LedService : IDisposable
 
 			// Apply the frame
 			ApplyFrame(frame);
+			
+			// Update the display to show the changes
+			UpdateDisplay();
 		}
 
 		// Clear LEDs at the end

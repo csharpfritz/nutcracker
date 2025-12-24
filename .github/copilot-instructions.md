@@ -21,13 +21,18 @@ This is a Blazor Server application designed to run on a Raspberry Pi Zero to co
 1. **LedService** (Singleton)
    - Controls LED hardware via GPIO pins
    - Manages LED states, colors, and patterns
-   - Should use Raspberry Pi GPIO libraries (System.Device.Gpio)
+   - Uses Raspberry Pi GPIO libraries (System.Device.Gpio)
+   - Requires `IWebHostEnvironment` injection to access WebRootPath
+   - Combines pattern file paths with WebRootPath: `Path.Combine(environment.WebRootPath, patternFilePath)`
    
 2. **LightshowService** (Hosted Service, Singleton)
    - Background service that runs continuously
    - Manages a queue of lightshows (`ConcurrentQueue<LightshowSettings>`)
    - Coordinates LED patterns with music playback
    - Handles lightshow sequencing and timing
+   - Requires `IWebHostEnvironment` injection to access WebRootPath for music files
+   - Combines music file paths with WebRootPath before passing to mplayer: `Path.Combine(environment.WebRootPath, lightshowSettings.MusicFilePath)`
+   - **Critical:** Constructor signature must include `IWebHostEnvironment environment` parameter
 
 ### Data Models
 - **LightshowSettings**: Record type containing Name, MusicFilePath, and LightPatternFilePath
@@ -54,7 +59,9 @@ This is a Blazor Server application designed to run on a Raspberry Pi Zero to co
 - Validate file existence before attempting to load
 - Support common audio formats compatible with mplayer (MP3, WAV, OGG, FLAC)
 - Light patterns should be JSON or simple text format for easy editing
-- Use relative paths from wwwroot for music and light pattern files
+- **CRITICAL:** Use relative paths WITHOUT the `wwwroot/` prefix (e.g., `music/song.mp3`, `lights/pattern.json`)
+- The application code uses `IWebHostEnvironment.WebRootPath` which already points to the wwwroot directory
+- Paths in `AvailableLightshows` should be: `music/filename.mp3` and `lights/filename.json` (NOT `wwwroot/music/...`)
 
 ### Error Handling
 - Log all hardware errors
@@ -117,9 +124,22 @@ This is a Blazor Server application designed to run on a Raspberry Pi Zero to co
 ## Deployment
 
 ### Build for Raspberry Pi
-- Use `dotnet publish` with correct runtime identifier (linux-arm)
+- Use `dotnet publish` with correct runtime identifier (linux-arm64)
 - Keep published output size minimal
-- Consider self-contained vs framework-dependent deployment
+- Use self-contained deployment to avoid .NET runtime dependencies
+- The project has a post-build script that automatically deploys via SCP
+
+### Deployment Process
+1. **Stop the service first:** `ssh user@pi "sudo systemctl stop nutcracker"`
+2. **Build and deploy:** `dotnet publish -c Release -r linux-arm64 --self-contained`
+3. **Start the service:** `ssh user@pi "sudo systemctl start nutcracker"`
+4. **Check logs:** `ssh user@pi "sudo journalctl -u nutcracker -n 50 --no-pager"`
+
+### Common Deployment Issues
+- **Music not playing:** Verify music file path is relative to wwwroot (e.g., `music/song.mp3`)
+- **Pattern not loading:** Check path is relative to wwwroot (e.g., `lights/pattern.json`)
+- **Doubled paths (wwwroot/wwwroot/):** Paths in code should NOT include `wwwroot/` prefix
+- **SCP fails during build:** Service must be stopped before deployment
 
 ### Runtime Configuration
 - Run as systemd service for auto-start on boot
@@ -147,11 +167,16 @@ wwwroot/lights/*.json - Light pattern definitions (accessed via web root)
 2. Create corresponding pattern file in `wwwroot/lights/`
 3. **Update the `AvailableLightshows` array in `Services/LightshowService.cs`** with the new show:
    - Add a new entry with Name, Duration (TimeSpan), MusicFilePath, and LightPatternFilePath
-   - Use the format: `new("Song Name", new TimeSpan(hours, minutes, seconds), "wwwroot/music/filename.mp3", "wwwroot/lights/filename.json")`
+   - **CRITICAL:** Use paths relative to wwwroot WITHOUT the `wwwroot/` prefix
+   - Use the format: `new("Song Name", new TimeSpan(hours, minutes, seconds), "music/filename.mp3", "lights/filename.json")`
+   - Example: `new("Santa Claus Is Comin To Town", new TimeSpan(0, 4, 28), "music/bruce-springsteen.mp3", "lights/bruce-springsteen.json")`
    - Ensure paths match the actual file locations
-4. Add to queue via UI or configuration
+4. **Deploy to Pi:**
+   - Stop the service: `ssh user@pi "sudo systemctl stop nutcracker"`
+   - Build and deploy: `dotnet publish -c Release -r linux-arm64 --self-contained` (auto-deploys via post-build script)
+   - Start the service: `ssh user@pi "sudo systemctl start nutcracker"`
 5. Pattern format should include timing, LED indices, and colors
-6. Ensure mplayer can access the file path on the Pi
+6. Verify in logs: `ssh user@pi "sudo journalctl -u nutcracker -n 50 --no-pager"`
 
 ### Adding New LED Patterns
 - Use JSON format with timestamps
@@ -181,6 +206,33 @@ wwwroot/lights/*.json - Light pattern definitions (accessed via web root)
 - Bluetooth audio may have latency (factor into synchronization)
 - GPIO access requires root or appropriate user permissions
 - Limited simultaneous LED updates per frame
+
+## Troubleshooting
+
+### Music Not Playing
+- Check logs for "Pattern file not found" errors
+- Verify music file path in `AvailableLightshows` is relative to wwwroot: `music/filename.mp3`
+- Ensure `LightshowService` constructor includes `IWebHostEnvironment environment` parameter
+- Verify music file was deployed to Pi: `ssh user@pi "ls -la /home/user/www/wwwroot/music/"`
+
+### Lightshow Using Fallback Animation
+- Check logs for "Pattern file not found: /path/to/file"
+- If path shows `wwwroot/wwwroot/`, paths in code have incorrect `wwwroot/` prefix
+- Correct format: `lights/pattern.json` (NOT `wwwroot/lights/pattern.json`)
+- Verify pattern file exists on Pi: `ssh user@pi "ls -la /home/user/www/wwwroot/lights/"`
+
+### Flicker/Blinking Issues
+- Too many `fill` effects with black (#000000) cause jarring screen blanks
+- Use `set` with explicit LED lists instead of `fill` for most effects
+- Avoid `clear` - use dimming to dark colors (#330000, #333333) instead
+- Space major effects at least 200ms apart
+- Target <1% fill effects for smooth animations
+
+### Service Won't Start
+- Check logs: `ssh user@pi "sudo journalctl -u nutcracker -n 100 --no-pager"`
+- Verify execute permissions: `ssh user@pi "chmod +x /home/user/www/Nutcracker"`
+- Check for port conflicts (default port 3000)
+- Ensure GPIO permissions are set correctly
 
 ## Future Enhancements
 - Multiple lightshow scheduling (time-based)
@@ -272,6 +324,7 @@ You MUST generate JSON files matching this exact schema:
 - **Safety:** NO rapid strobing (max 5Hz full-frame flips). Use fades/pulses instead
 - **Performance:** Target 4-8 updates/second for Pi Zero. Keep frame count 500-2000 per song
 - **Visual hierarchy:** Beats = small pulses, choruses = bigger effects
+- **Minimize flicker:** Use `set` instead of `fill` whenever possible. Avoid `clear` operations that turn LEDs off. Instead, fade to dark colors (#330000) to maintain smooth visual flow
 
 **Effect Mapping Guidelines:**
 
@@ -304,10 +357,14 @@ You MUST generate JSON files matching this exact schema:
 - Space frames evenly based on effect speed (typical: 100-500ms apart)
 
 **Frame Optimization:**
-- Use `set` with explicit LED lists for sparse updates (more efficient)
-- Use `fill` only when changing entire background
+- **CRITICAL: Minimize flicker** - Avoid `fill` with black (#000000) between animations as it causes jarring blinks
+- Use `set` with explicit LED lists for sparse updates (more efficient and smoother)
+- Use `fill` sparingly - only at the very start (timestampMs: 0) and end of the show
+- **Never use `clear` effect** - Instead fade LEDs to dark colors like #330000 (very dark red) or #333333 (very dark white)
 - Batch similar effects into fewer frames when possible
 - For fades, create 2-4 intermediate frames with different brightness values
+- Let LEDs persist between beats - dim them instead of turning them off completely
+- Space big effects at least 200ms apart to prevent visual overlap
 
 **Color Guidelines:**
 - **Default palette:** Red (#CC0000), Green (#00CC00), White (#CCCCCC)

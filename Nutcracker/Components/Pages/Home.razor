@@ -123,12 +123,16 @@
 @code {
     private List<LightshowSettings> queueList = new();
     private bool showSettings = false;
-    private int volume = 70; // Default volume at 70%
-    private int brightness = 80; // Default brightness at 80%
+    private int volume = 70; // Will be synchronized in OnInitialized
+    private int brightness = 10; // Will be synchronized in OnInitialized
 
     protected override void OnInitialized()
     {
         RefreshQueue();
+        
+        // Synchronize sliders with actual service values
+        volume = LightshowService.GetVolume();
+        brightness = LedService.GetBrightness();
         
         // Subscribe to service events
         LightshowService.LightshowStarted += OnLightshowChanged;
