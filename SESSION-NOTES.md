@@ -82,6 +82,37 @@ Blazor Server application running on Raspberry Pi Zero controlling a holiday nut
 - Font: 3x5 pixel letters with 1-column spacing between letters
 - Static display (holds for 5 minutes before looping)
 
+### Enhancement: Full "MERRY CHRISTMAS" Scrolling Idle Display
+**Goal:** Extend the idle display so it shows the full phrase "MERRY CHRISTMAS" scrolling right-to-left across the matrix, rather than only "MERRY". The scroll should be smooth, readable, and repeat indefinitely.
+
+**Why:** The full phrase is more festive for viewers and leverages the existing 32×8 matrix by scrolling text across rather than fitting a shorter centered word.
+
+**Acceptance Criteria:**
+- The full text "MERRY CHRISTMAS" scrolls from right-to-left and repeats infinitely.
+- Text is red, vertically centered on rows 1-6, with 1-column spacing between letters using the 3x5 font.
+- Top and bottom green borders remain visible during scrolling.
+- Default scroll speed is readable (approx. 120ms/column) and configurable via the JSON pattern.
+- LightshowService falls back to `merry-christmas-static.json` if the scrolling file is missing.
+
+**Implementation Steps:**
+1. Verify `wwwroot/lights/merry-christmas-scrolling.json` contains a `scrollMs` parameter and frames representing a full cycle (text width + display width).
+2. If not present, generate the JSON: render the text into a bitmap (width = text pixel width), produce frames shifting the bitmap left by one column per `scrollMs`, and add border frames for top/bottom green rows.
+3. Ensure frames use `set` and `clear` effects with exact LED indices computed via `xy_to_led(x, y)` to match serpentine wiring.
+4. Update `LightshowService.cs` (optional) to use `merry-christmas-scrolling.json` as the idle pattern when queue is empty.
+5. Deploy and test on Pi using the web UI "Test LEDs" and by running the service.
+
+**Quick Test Commands:**
+```bash
+# On the Pi - test pattern file exists
+ls -la /home/jfritz/www/wwwroot/lights/merry-christmas-scrolling.json
+
+# Trigger a test from the web UI or restart the service after deploy
+sudo systemctl restart nutcracker
+sudo journalctl -u nutcracker --no-pager -n 100
+```
+
+**Notes:** If the Pi Zero struggles with rendering many frames at `120ms` per column, increase `scrollMs` to reduce CPU load or precompute fewer frames and loop them.
+
 **LED Mappings:**
 - **Red LEDs (MERRY):** [9, 10, 11, 12, 13, 14, 18, 25, 26, 27, 28, 29, 30, 41, 42, 43, 44, 45, 46, 49, 51, 54, 57, 62, 73, 74, 75, 76, 77, 78, 81, 83, 89, 90, 91, 93, 94, 105, 106, 107, 108, 109, 110, 113, 115, 121, 122, 123, 125, 126, 140, 141, 142, 148, 149, 150, 156, 157, 158]
 - **Green LEDs (borders):** [0, 7, 8, 15, 16, 23, 24, 31, 32, 39, 40, 47, 48, 55, 56, 63, 64, 71, 72, 79, 80, 87, 88, 95, 96, 103, 104, 111, 112, 119, 120, 127, 128, 135, 136, 143, 144, 151, 152, 159, 160, 167, 168, 175, 176, 183, 184, 191, 192, 199, 200, 207, 208, 215, 216, 223, 224, 231, 232, 239, 240, 247, 248, 255]
