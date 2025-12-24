@@ -22,7 +22,7 @@ public class LedService : IDisposable
 	private const int GPIO_PIN = 10;        // SPI0 MOSI - GPIO 10 (Physical Pin 19)
 	private const int DMA_CHANNEL = 10;     // DMA channel (10 is usually safe)
 	private const uint TARGET_FREQ = 800000; // 800kHz for WS2812B
-	private const byte DEFAULT_BRIGHTNESS = 204; // 80% brightness (0-255)
+	private const byte DEFAULT_BRIGHTNESS = 13; // 5% brightness (0-255)
 
 	public LedService(ILogger<LedService> logger, IWebHostEnvironment environment)
 	{
@@ -373,14 +373,23 @@ public class LedService : IDisposable
 		while (!stoppingToken.IsCancellationRequested)
 		{
 			var startTime = DateTime.UtcNow;
+			var lastTimestamp = 0;
 
-			foreach (var frame in pattern.Frames)
+			// Group frames by timestamp to batch updates
+			var framesByTimestamp = pattern.Frames
+				.GroupBy(f => f.TimestampMs)
+				.OrderBy(g => g.Key)
+				.ToList();
+
+			foreach (var frameGroup in framesByTimestamp)
 			{
 				if (stoppingToken.IsCancellationRequested)
 					break;
 
-				// Wait until it's time to display this frame
-				var targetTime = startTime.AddMilliseconds(frame.TimestampMs);
+				var timestamp = frameGroup.Key;
+				
+				// Wait until it's time to display this frame group
+				var targetTime = startTime.AddMilliseconds(timestamp);
 				var delay = targetTime - DateTime.UtcNow;
 				
 				if (delay > TimeSpan.Zero)
@@ -388,8 +397,15 @@ public class LedService : IDisposable
 					await Task.Delay(delay, stoppingToken);
 				}
 
-				// Apply the frame
-				ApplyFrame(frame);
+				// Apply all frames at this timestamp
+				foreach (var frame in frameGroup)
+				{
+					ApplyFrame(frame);
+				}
+				
+				// Update display once per timestamp
+				UpdateDisplay();
+				lastTimestamp = timestamp;
 			}
 
 			// No clear between loops - keep the last frame displayed
@@ -425,7 +441,8 @@ public class LedService : IDisposable
 				break;
 		}
 
-		UpdateDisplay();
+		// Note: UpdateDisplay is called only once per frame, not per effect
+		// This allows multiple effects to be batched before rendering
 	}
 
 	private void SetLeds(List<int>? ledIndices, string? colorHex)

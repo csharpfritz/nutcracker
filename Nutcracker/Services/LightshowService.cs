@@ -91,9 +91,9 @@ public class LightshowService(LedService ledService, ILogger<LightshowService> l
 		new("Wizards in Winter", new TimeSpan(0, 3, 5), "wwwroot/music/trans-siberian-orchestra-wizards-in-winter.mp3", "wwwroot/lights/wizards-in-winter.json")
 	];
 
-	// Static idle display when no shows are queued
+	// Scrolling idle display when no shows are queued
 	private static readonly LightshowSettings IdleDisplay = 
-		new("Merry Christmas", new TimeSpan(0, 5, 0), "", "lights/merry-christmas-static.json");
+		new("Merry Christmas", new TimeSpan(0, 0, 12), "", "lights/merry-christmas-scrolling.json");
 
 	// Implementation of the LightshowService
 	protected override Task ExecuteAsync(CancellationToken stoppingToken) =>  PlaylightShows(stoppingToken);
