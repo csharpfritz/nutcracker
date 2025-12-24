@@ -12,10 +12,10 @@ led_matrix_width = 320;     // Width in mm (32cm / 12.6 inch)
 led_matrix_height = 80;     // Height in mm (8cm / 3.15 inch)
 led_matrix_depth = 2;       // Depth/thickness in mm (flexible, very thin)
 
-// Raspberry Pi Zero dimensions
-pi_zero_width = 65;         // Width in mm
-pi_zero_length = 30;        // Length in mm
-pi_zero_height = 5;         // Height/thickness in mm
+// Raspberry Pi 3B dimensions
+pi_zero_width = 85;         // Width in mm (Pi 3B is larger)
+pi_zero_length = 56;        // Length in mm
+pi_zero_height = 17;        // Height/thickness in mm (with components)
 
 // USB Battery pack dimensions (adjust for your battery)
 battery_width = 60;         // Width in mm
@@ -35,10 +35,21 @@ add_cable_channels = true;  // Add cable management channels
 lid_type = "snap";          // "snap" or "screw"
 display_tilt_angle = 15;    // Angle of LED matrix tilt (degrees) - plaque style
 
+// Nutcracker mounting holes (to mount nutcracker to box)
+nutcracker_mount_hole_spacing_x = 50; // Horizontal spacing between mounting holes
+nutcracker_mount_hole_spacing_y = 70; // Vertical spacing between mounting holes
+nutcracker_mount_hole_diameter = 4;   // Diameter for nutcracker mounting screws
+
+// Pi mounting holes (Pi 3B standard mounting)
+pi_mount_hole_diameter = 2.75;        // M2.5 screw holes
+pi_standoff_height = 5;               // Height of mounting standoffs
+
 // Curved display parameters (for flexible matrix)
 use_curved_display = true;  // Use cylindrical curve instead of flat plaque
 curve_radius = 120;         // Radius of curve in mm (smaller = tighter curve)
 curve_segments = 60;        // Resolution of curve (higher = smoother)
+split_curved_display = true; // Split curved display into 2 printable halves
+alignment_pin_diameter = 3;  // Diameter of alignment pins for joining halves
 
 // === CALCULATED DIMENSIONS ===
 // Main box holds battery and Pi Zero
@@ -83,12 +94,57 @@ if (use_curved_display) {
 // === MAIN BOX MODULE ===
 module main_box() {
     difference() {
-        // Outer box
-        cube([box_width, box_length, box_height]);
+        union() {
+            // Outer box
+            cube([box_width, box_length, box_height]);
+            
+            // Pi mounting standoffs
+            pi_x_offset = wall_thickness + component_spacing;
+            pi_y_offset = wall_thickness + component_spacing;
+            // Pi 3B mounting holes (58mm x 49mm pattern)
+            translate([pi_x_offset + 3.5, pi_y_offset + 3.5, wall_thickness])
+                cylinder(h = pi_standoff_height, d = 6, $fn=20);
+            translate([pi_x_offset + 3.5 + 58, pi_y_offset + 3.5, wall_thickness])
+                cylinder(h = pi_standoff_height, d = 6, $fn=20);
+            translate([pi_x_offset + 3.5, pi_y_offset + 3.5 + 49, wall_thickness])
+                cylinder(h = pi_standoff_height, d = 6, $fn=20);
+            translate([pi_x_offset + 3.5 + 58, pi_y_offset + 3.5 + 49, wall_thickness])
+                cylinder(h = pi_standoff_height, d = 6, $fn=20);
+        }
         
         // Hollow interior
         translate([wall_thickness, wall_thickness, wall_thickness])
             cube([internal_width, internal_length, internal_height + 1]);
+        
+        // Pi mounting screw holes
+        pi_x_offset = wall_thickness + component_spacing;
+        pi_y_offset = wall_thickness + component_spacing;
+        translate([pi_x_offset + 3.5, pi_y_offset + 3.5, wall_thickness - 1])
+            cylinder(h = pi_standoff_height + 2, d = pi_mount_hole_diameter, $fn=20);
+        translate([pi_x_offset + 3.5 + 58, pi_y_offset + 3.5, wall_thickness - 1])
+            cylinder(h = pi_standoff_height + 2, d = pi_mount_hole_diameter, $fn=20);
+        translate([pi_x_offset + 3.5, pi_y_offset + 3.5 + 49, wall_thickness - 1])
+            cylinder(h = pi_standoff_height + 2, d = pi_mount_hole_diameter, $fn=20);
+        translate([pi_x_offset + 3.5 + 58, pi_y_offset + 3.5 + 49, wall_thickness - 1])
+            cylinder(h = pi_standoff_height + 2, d = pi_mount_hole_diameter, $fn=20);
+        
+        // Nutcracker mounting holes (on top of box, centered)
+        translate([box_width/2 - nutcracker_mount_hole_spacing_x/2, 
+                   box_length/2 - nutcracker_mount_hole_spacing_y/2, 
+                   -1])
+            cylinder(h = wall_thickness + 2, d = nutcracker_mount_hole_diameter, $fn=20);
+        translate([box_width/2 + nutcracker_mount_hole_spacing_x/2, 
+                   box_length/2 - nutcracker_mount_hole_spacing_y/2, 
+                   -1])
+            cylinder(h = wall_thickness + 2, d = nutcracker_mount_hole_diameter, $fn=20);
+        translate([box_width/2 - nutcracker_mount_hole_spacing_x/2, 
+                   box_length/2 + nutcracker_mount_hole_spacing_y/2, 
+                   -1])
+            cylinder(h = wall_thickness + 2, d = nutcracker_mount_hole_diameter, $fn=20);
+        translate([box_width/2 + nutcracker_mount_hole_spacing_x/2, 
+                   box_length/2 + nutcracker_mount_hole_spacing_y/2, 
+                   -1])
+            cylinder(h = wall_thickness + 2, d = nutcracker_mount_hole_diameter, $fn=20);
         
         // USB power port access for battery (back)
         translate([wall_thickness + (internal_width - 12)/2, 
@@ -96,11 +152,17 @@ module main_box() {
                    wall_thickness + bottom_clearance + 3])
             cube([12, wall_thickness + 2, 8]);
         
-        // Micro USB access for Pi Zero (side)
+        // USB/Ethernet access for Pi 3B (side)
         translate([-1, 
-                   wall_thickness + component_spacing, 
-                   wall_thickness + bottom_clearance + 2])
-            cube([wall_thickness + 2, 10, 4]);
+                   wall_thickness + component_spacing + 10, 
+                   wall_thickness + bottom_clearance + pi_standoff_height + 2])
+            cube([wall_thickness + 2, 35, 15]);
+        
+        // LED wire pass-through hole (front, near display connection)
+        translate([box_width/2 - 8, 
+                   -1, 
+                   wall_thickness + bottom_clearance + pi_standoff_height + 5])
+            cube([16, wall_thickness + 2, 10]);
         
         // Ventilation slots (sides)
         if (add_ventilation) {
@@ -135,6 +197,44 @@ module main_box() {
 }
 
 // === CURVED DISPLAY MODULE (for flexible matrix) ===
+// Alignment pin post for joining halves
+module alignment_pin_post(height=10) {
+    cylinder(h = height, d = alignment_pin_diameter + 1, $fn=20);
+}
+
+// Alignment pin hole for joining halves
+module alignment_pin_hole(depth=12) {
+    cylinder(h = depth, d = alignment_pin_diameter + 0.3, $fn=20);
+}
+
+// Half of curved display (left or right)
+module curved_display_half(is_left=true) {
+    intersection() {
+        curved_display();
+        
+        // Cut plane - keep left or right half
+        translate([is_left ? -200 : 0, -100, -10])
+            cube([200, 300, 200]);
+    }
+    
+    // Add alignment pins/holes at split line
+    pin_y_positions = [-40, 0, 40];
+    for (y_pos = pin_y_positions) {
+        if (is_left) {
+            // Left half gets posts
+            translate([0, y_pos, led_matrix_height/2])
+                rotate([0, 90, 0])
+                    alignment_pin_post(height=8);
+        } else {
+            // Right half gets holes
+            translate([0, y_pos, led_matrix_height/2])
+                rotate([0, 90, 0])
+                    translate([0, 0, -1])
+                        alignment_pin_hole(depth=10);
+        }
+    }
+}
+
 module curved_display() {
     matrix_channel_depth = led_matrix_depth + 1; // Channel to hold flexible matrix
     total_height = led_matrix_height + wall_thickness * 2;
@@ -303,8 +403,18 @@ translate([box_width + 10, 0, 0])
     lid();
 
 if (use_curved_display) {
-    translate([110, box_length + 60, 0])
-        curved_display();
+    if (split_curved_display) {
+        // Print left half
+        translate([0, box_length + 60, 0])
+            curved_display_half(is_left=true);
+        
+        // Print right half
+        translate([curve_chord_width/2 + 20, box_length + 60, 0])
+            curved_display_half(is_left=false);
+    } else {
+        translate([110, box_length + 60, 0])
+            curved_display();
+    }
 } else {
     translate([box_width/2 - (led_matrix_width + wall_thickness * 2 + component_spacing * 2)/2, 
                box_length + 20, 

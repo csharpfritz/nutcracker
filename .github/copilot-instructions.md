@@ -325,6 +325,44 @@ You MUST generate JSON files matching this exact schema:
 - **Performance:** Target 4-8 updates/second for Pi Zero. Keep frame count 500-2000 per song
 - **Visual hierarchy:** Beats = small pulses, choruses = bigger effects
 - **Minimize flicker:** Use `set` instead of `fill` whenever possible. Avoid `clear` operations that turn LEDs off. Instead, fade to dark colors (#330000) to maintain smooth visual flow
+- **BE CREATIVE:** Don't settle for boring repetitive patterns. Mix multiple effect types throughout the song for visual interest
+
+**Creative Effect Guidelines - Think Like an Artist:**
+
+**IMPORTANT: User expects HIGH CREATIVITY and VARIETY in lightshows!** Simple repetitive patterns are NOT acceptable. Each lightshow should tell a visual story with multiple distinct effects:
+
+**Text Displays (Use Frequently!):**
+- Display key lyrics or words from the song at appropriate times
+- Example: Show "SANTA" when lyrics say "Santa Claus"
+- Use LARGE fonts (5×7 pixels minimum) that fill most/all of the display height
+- Make text flash/pulse for emphasis (3-4 times with increasing brightness)
+- Keep text visible for 2-6 seconds, then fade out smoothly
+- Position text starting at x=1 or x=2 for centering
+- Sync text appearances with song structure (choruses, hooks, key phrases)
+
+**Animated Objects (Sleighs, Snowflakes, Stars, etc.):**
+- Create LARGE objects (6-8 pixels wide, 4-6 pixels tall minimum)
+- Animate objects moving across the screen (left-to-right, top-to-bottom)
+- Add trailing effects (sparkles, fading trails)
+- Examples: sleighs with sparkle trails, falling snowflakes, shooting stars
+- Space these animations throughout the song (every 10-15 seconds)
+- Make objects detailed and recognizable, not tiny abstract dots
+
+**Varied Background Effects:**
+- Column sweeps with different colors and speeds
+- Wave patterns moving across the display
+- Pulsing borders (top/bottom rows)
+- Corner star patterns
+- Alternating column effects during high-energy sections
+- Gradient fills during transitions
+- Mix these up - don't use the same effect repeatedly
+
+**Synchronization Strategy:**
+- Identify song structure: intro, verses, choruses, bridge, outro
+- Create distinct visual themes for each section
+- Save big effects (text, animated objects) for choruses and hooks
+- Use simpler patterns (pulses, waves) for verses
+- Build intensity through the song, not flat repetition
 
 **Effect Mapping Guidelines:**
 
@@ -335,18 +373,32 @@ You MUST generate JSON files matching this exact schema:
 
 **For Choruses:**
 - Larger animations: column sweeps, row chases, gradients
-- Start with `fill` for background, then use `set` for moving accents
+- **TEXT DISPLAYS:** Show key lyrics in LARGE letters (5×7 font minimum)
+- **ANIMATED OBJECTS:** Move sleighs, snowflakes, or thematic objects across screen
 - Example: sweep red across columns 0→31 over 2 seconds
+- Make choruses visually distinct and memorable
 
 **For Melodic/Calm Sections:**
 - Gentle waves moving across columns or rows
 - Pulsing border effects (top row and bottom row)
 - Slower frame rate (200-400ms between frames)
+- Subtle object animations (slow-moving stars, gentle sparkles)
 
-**For Text Overlays (Optional):**
-- Use 3×5 pixel font for letters, centered on rows 1-6
-- Scroll horizontally for phrases like "MERRY XMAS"
-- Keep borders visible (row 0 and row 7 in green)
+**For High-Energy Sections:**
+- Multiple simultaneous effects
+- Faster column sweeps
+- Alternating pattern effects
+- Corner bursts and border flashes
+- Keep movement dynamic and exciting
+
+**For Text Overlays (HIGHLY RECOMMENDED):**
+- Use 5×7 pixel font for maximum visibility (fills y=0 to y=6)
+- Flash text 3-4 times with increasing intensity before displaying
+- Keep text on screen for 2-6 seconds
+- Fade out slowly through multiple color steps
+- Examples: "SANTA", "MERRY", "JOY", song-specific words
+- Sync with actual lyrics timing by analyzing song structure or asking user
+- Position at x=1 or x=2 for near-centering on 32-pixel width
 
 ### Step 3: Generate Frames
 
@@ -408,6 +460,25 @@ You MUST generate JSON files matching this exact schema:
 5. **Validate paths** - Ensure all file paths are within `wwwroot/` to prevent directory traversal
 
 ## Example Animation Patterns
+
+### Large Text Display (5×7 Font)
+Display "SANTA" with flash sequence and fade:
+1. Clear screen
+2. Flash in dark red (#660000) at 100ms
+3. Dim to #330000 at 300ms
+4. Flash in medium red (#990000) at 500ms
+5. Continue increasing intensity to bright red (#FF0000)
+6. Hold in white for 2 seconds
+7. Fade through #CCCCCC → #999999 → #666666 → #333333
+8. Clear
+
+### Large Animated Sleigh (8×6 pixels)
+Create sleigh moving left-to-right:
+- Sleigh shape: 8 pixels wide, 6 pixels tall
+- Move 2 pixels per frame for smooth motion
+- Add sparkle trail behind (golden stars)
+- Clear previous position as sleigh advances
+- Total animation time: 3-4 seconds
 
 ### Simple Beat Pulse (Bottom Row)
 ```json
