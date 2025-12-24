@@ -126,13 +126,19 @@ public class LightshowService(LedService ledService, ILogger<LightshowService> l
 							CreateNoWindow = true,
 							RedirectStandardOutput = true,
 							RedirectStandardError = true,
-							RedirectStandardInput = true
+							RedirectStandardInput = true,
+							Environment = 
+							{
+								["TERM"] = "dumb",
+								["PULSE_SERVER"] = "unix:/run/user/1000/pulse/native"
+							}
 						}
 					};
 					
 					musicProcess.Start();
 					_currentMusicProcess = musicProcess;
-					logger.LogInformation($"Started music playback for: {lightshowSettings.Name} at {_currentVolume}% volume");
+					
+					logger.LogInformation($"Started music playback for: {lightshowSettings.Name} at {_currentVolume}% volume (PID: {musicProcess.Id})");
 
 					// Start the LED light show in parallel
 					var ledTask = Task.Run(async () =>
@@ -163,6 +169,20 @@ public class LightshowService(LedService ledService, ILogger<LightshowService> l
 				catch (OperationCanceledException)
 				{
 					logger.LogInformation($"Lightshow skipped: {lightshowSettings.Name}");
+					
+					// Kill the music process if it's still running
+					if (_currentMusicProcess != null && !_currentMusicProcess.HasExited)
+					{
+						try
+						{
+							_currentMusicProcess.Kill();
+							logger.LogInformation($"Stopped music process for skipped show");
+						}
+						catch (Exception ex)
+						{
+							logger.LogWarning(ex, $"Error stopping music process: {ex.Message}");
+						}
+					}
 				}
 				catch (Exception ex)
 				{
