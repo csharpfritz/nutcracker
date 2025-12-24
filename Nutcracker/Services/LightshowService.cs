@@ -16,6 +16,8 @@ public class LightshowService(LedService ledService, ILogger<LightshowService> l
 	public ConcurrentQueue<LightshowSettings> LightshowQueue { get; } = new();
 
 	private CancellationTokenSource? _skipTokenSource;
+	private System.Diagnostics.Process? _currentMusicProcess;
+	private int _currentVolume = 70; // Default volume at 70%
 
 	public LightshowSettings? CurrentLightshow { get; private set; } = null!;
 
@@ -31,6 +33,46 @@ public class LightshowService(LedService ledService, ILogger<LightshowService> l
 		{
 			logger.LogInformation($"Skipping current lightshow: {CurrentLightshow.Name}");
 			_skipTokenSource.Cancel();
+		}
+	}
+
+	public void SetVolume(int volume)
+	{
+		_currentVolume = Math.Clamp(volume, 0, 100);
+		logger.LogInformation($"Volume set to: {_currentVolume}%");
+		
+		// Use amixer to control system volume (affects all audio output including Bluetooth)
+		try
+		{
+			var amixerProcess = new System.Diagnostics.Process
+			{
+				StartInfo = new System.Diagnostics.ProcessStartInfo
+				{
+					FileName = "amixer",
+					Arguments = $"sset 'Master' {_currentVolume}%",
+					UseShellExecute = false,
+					CreateNoWindow = true,
+					RedirectStandardOutput = true,
+					RedirectStandardError = true
+				}
+			};
+			
+			amixerProcess.Start();
+			amixerProcess.WaitForExit(1000); // Wait up to 1 second
+			
+			if (amixerProcess.ExitCode == 0)
+			{
+				logger.LogInformation($"Successfully set system volume to {_currentVolume}%");
+			}
+			else
+			{
+				var error = amixerProcess.StandardError.ReadToEnd();
+				logger.LogWarning($"amixer returned non-zero exit code. Error: {error}");
+			}
+		}
+		catch (Exception ex)
+		{
+			logger.LogError(ex, "Failed to set system volume using amixer");
 		}
 	}
 
@@ -79,16 +121,18 @@ public class LightshowService(LedService ledService, ILogger<LightshowService> l
 						StartInfo = new System.Diagnostics.ProcessStartInfo
 						{
 							FileName = "mplayer",
-							Arguments = $"\"{lightshowSettings.MusicFilePath}\"",
+							Arguments = $"-volume {_currentVolume} -ao pulse -really-quiet -nolirc \"{lightshowSettings.MusicFilePath}\"",
 							UseShellExecute = false,
 							CreateNoWindow = true,
 							RedirectStandardOutput = true,
-							RedirectStandardError = true
+							RedirectStandardError = true,
+							RedirectStandardInput = true
 						}
 					};
 					
 					musicProcess.Start();
-					logger.LogInformation($"Started music playback for: {lightshowSettings.Name}");
+					_currentMusicProcess = musicProcess;
+					logger.LogInformation($"Started music playback for: {lightshowSettings.Name} at {_currentVolume}% volume");
 
 					// Start the LED light show in parallel
 					var ledTask = Task.Run(async () =>
@@ -128,6 +172,7 @@ public class LightshowService(LedService ledService, ILogger<LightshowService> l
 				{
 					_skipTokenSource?.Dispose();
 					_skipTokenSource = null;
+					_currentMusicProcess = null;
 					CurrentLightshow = null;
 					LightshowEnded?.Invoke(this, EventArgs.Empty);
 				}

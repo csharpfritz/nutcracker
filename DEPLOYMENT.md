@@ -18,7 +18,7 @@ Use the automated deployment scripts for faster deployments that only upload cha
 **Options:**
 - `--clean` / `-Clean`: Clean rebuild before deployment
 - `--skip-build` / `-SkipBuild`: Skip build, deploy existing files only
-- `--target` / `-Target`: Target Pi address (default: nutcracker-1.local)
+- `--target` / `-Target`: Target Pi address (default: nutcracker-2)
 - `--user` / `-User`: SSH username (default: jfritz)
 - `--path` / `-Path`: Remote deployment path (default: /home/jfritz/www)
 
@@ -56,7 +56,7 @@ dotnet publish -c Release
 ```bash
 cd Nutcracker
 dotnet publish -c Release -r linux-arm64 --self-contained
-scp -r bin/Release/net10.0/linux-arm64/publish/* jfritz@nutcracker-1.local:/home/jfritz/www/
+scp -r bin/Release/net10.0/linux-arm64/publish/* jfritz@nutcracker-2:/home/jfritz/www/
 ```
 
 ### 4. Set Up Auto-Start (Optional)
@@ -116,10 +116,10 @@ sudo journalctl -u nutcracker -f
 Allow LED control without full root privileges:
 ```bash
 # Upload the capability script
-scp set_capabilities.sh jfritz@nutcracker-1.local:/home/jfritz/www/
+scp set_capabilities.sh jfritz@nutcracker-2:/home/jfritz/www/
 
 # Run it on the Pi
-ssh jfritz@nutcracker-1.local
+ssh jfritz@nutcracker-2
 cd /home/jfritz/www
 chmod +x set_capabilities.sh
 ./set_capabilities.sh

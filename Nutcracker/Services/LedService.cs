@@ -21,7 +21,7 @@ public class LedService : IDisposable
 	private const int GPIO_PIN = 10;        // SPI0 MOSI - GPIO 10 (Physical Pin 19)
 	private const int DMA_CHANNEL = 10;     // DMA channel (10 is usually safe)
 	private const uint TARGET_FREQ = 800000; // 800kHz for WS2812B
-	private const byte DEFAULT_BRIGHTNESS = 255; // Full brightness (0-255)
+	private const byte DEFAULT_BRIGHTNESS = 204; // 80% brightness (0-255)
 
 	public LedService(ILogger<LedService> logger, IWebHostEnvironment environment)
 	{

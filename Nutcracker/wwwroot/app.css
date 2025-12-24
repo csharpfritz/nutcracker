@@ -39,6 +39,48 @@ html, body {
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
 }
 
+.btn-settings {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    margin-top: 15px;
+}
+
+.btn-settings:hover {
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    transform: scale(1.05);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+}
+
+.btn-settings:active {
+    transform: scale(0.98);
+}
+
+/* Settings Section */
+.settings-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 15px;
+    padding: 25px;
+    margin-bottom: 30px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    border: 2px solid #FFD700;
+}
+
+.settings-section h3 {
+    color: #FFD700;
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin: 0 0 20px 0;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
+}
+
 /* Test Section */
 .test-section {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -138,6 +180,92 @@ html, body {
     display: flex;
     gap: 10px;
     justify-content: center;
+}
+
+/* Volume Control */
+.volume-control {
+    margin-top: 20px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    border: 2px solid rgba(76, 175, 80, 0.3);
+}
+
+.volume-control label {
+    display: block;
+    color: #FFD700;
+    font-size: 1.1rem;
+    font-weight: bold;
+    margin-bottom: 12px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.volume-control input[type="range"] {
+    width: 100%;
+    height: 8px;
+    background: linear-gradient(to right, #4CAF50 0%, #4CAF50 70%, rgba(255, 255, 255, 0.2) 70%, rgba(255, 255, 255, 0.2) 100%);
+    border-radius: 5px;
+    outline: none;
+    -webkit-appearance: none;
+    margin: 10px 0;
+    cursor: pointer;
+}
+
+.volume-control input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+    cursor: pointer;
+    border-radius: 50%;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+    transition: all 0.2s;
+    border: 3px solid #fff;
+}
+
+.volume-control input[type="range"]::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+    cursor: pointer;
+    border-radius: 50%;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+    transition: all 0.2s;
+    border: 3px solid #fff;
+}
+
+.volume-control input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.5);
+}
+
+.volume-control input[type="range"]::-moz-range-thumb:hover {
+    transform: scale(1.15);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.5);
+}
+
+.volume-control input[type="range"]::-webkit-slider-thumb:active {
+    transform: scale(1.05);
+}
+
+.volume-control input[type="range"]::-moz-range-thumb:active {
+    transform: scale(1.05);
+}
+
+.volume-value {
+    display: inline-block;
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 1.1rem;
+    margin-left: 10px;
+    min-width: 60px;
+    text-align: center;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.2);
 }
 
 .btn-skip {

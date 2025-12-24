@@ -1,0 +1,71 @@
+{
+  "name": "Wiring Test",
+  "description": "Sequential LED test to determine matrix wiring pattern",
+  "durationMs": 60000,
+  "frames": [
+    {
+      "timestampMs": 0,
+      "effect": "fill",
+      "color": "#000000"
+    },
+    {
+      "timestampMs": 100,
+      "effect": "set",
+      "color": "#FF0000",
+      "leds": [0]
+    },
+    {
+      "timestampMs": 1100,
+      "effect": "set",
+      "color": "#00FF00",
+      "leds": [1]
+    },
+    {
+      "timestampMs": 2100,
+      "effect": "set",
+      "color": "#0000FF",
+      "leds": [2]
+    },
+    {
+      "timestampMs": 3100,
+      "effect": "set",
+      "color": "#FFFF00",
+      "leds": [3]
+    },
+    {
+      "timestampMs": 4100,
+      "effect": "set",
+      "color": "#FF00FF",
+      "leds": [4]
+    },
+    {
+      "timestampMs": 5100,
+      "effect": "set",
+      "color": "#00FFFF",
+      "leds": [5]
+    },
+    {
+      "timestampMs": 6100,
+      "effect": "set",
+      "color": "#FFFFFF",
+      "leds": [6]
+    },
+    {
+      "timestampMs": 7100,
+      "effect": "set",
+      "color": "#FF8000",
+      "leds": [7]
+    },
+    {
+      "timestampMs": 8100,
+      "effect": "fill",
+      "color": "#000000"
+    },
+    {
+      "timestampMs": 10000,
+      "effect": "set",
+      "color": "#FFFFFF",
+      "leds": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
+    }
+  ]
+}

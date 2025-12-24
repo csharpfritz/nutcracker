@@ -11,12 +11,17 @@
     <div class="christmas-header">
         <h1 class="christmas-title">🎄 Nutcracker Holiday Display 🎅</h1>
         <p class="christmas-subtitle">Bringing Holiday Cheer with Music & Lights!</p>
+        <button class="btn-settings" @onclick="ToggleSettings">⚙️ Settings</button>
     </div>
 
-    <!-- LED Test Section -->
-    <div class="test-section">
-        <button class="btn-test" @onclick="TestLeds">🔦 Test LEDs</button>
-    </div>
+    <!-- Settings Section (collapsible) -->
+    @if (showSettings)
+    {
+        <div class="settings-section">
+            <h3>⚙️ Settings</h3>
+            <button class="btn-test" @onclick="TestLeds">🔦 Test LEDs</button>
+        </div>
+    }
 
     <!-- Now Playing Section -->
     <div class="now-playing-section">
@@ -35,6 +40,17 @@
                     <span></span>
                     <span></span>
                 </div>
+            </div>
+            <div class="volume-control">
+                <label for="volume-slider">🔊 Volume</label>
+                <input type="range" 
+                       id="volume-slider" 
+                       min="0" 
+                       max="100" 
+                       @bind="volume" 
+                       @bind:event="oninput"
+                       @onchange="UpdateVolume" />
+                <span class="volume-value">@volume%</span>
             </div>
             <div class="control-buttons">
                 <button class="btn-skip" @onclick="SkipCurrentShow">⏭️ Skip</button>
@@ -95,6 +111,8 @@
 
 @code {
     private List<LightshowSettings> queueList = new();
+    private bool showSettings = false;
+    private int volume = 70; // Default volume at 70%
 
     protected override void OnInitialized()
     {
@@ -125,6 +143,16 @@
     private void SkipCurrentShow()
     {
         LightshowService.SkipCurrentShow();
+    }
+
+    private void ToggleSettings()
+    {
+        showSettings = !showSettings;
+    }
+
+    private void UpdateVolume()
+    {
+        LightshowService.SetVolume(volume);
     }
 
     private async Task TestLeds()

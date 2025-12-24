@@ -10,7 +10,7 @@
     Skip the build step and only deploy existing publish output
 
 .PARAMETER Target
-    Target Pi address (default: nutcracker-1.local)
+    Target Pi address (default: nutcracker-2)
 
 .PARAMETER User
     SSH username (default: jfritz)
@@ -27,7 +27,7 @@
 param(
     [switch]$Clean,
     [switch]$SkipBuild,
-    [string]$Target = "nutcracker-1.local",
+    [string]$Target = "nutcracker-2",
     [string]$User = "jfritz", 
     [string]$Path = "/home/jfritz/www"
 )
