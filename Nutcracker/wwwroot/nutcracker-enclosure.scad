@@ -17,10 +17,10 @@ pi_zero_width = 85;         // Width in mm (Pi 3B is larger)
 pi_zero_length = 56;        // Length in mm
 pi_zero_height = 17;        // Height/thickness in mm (with components)
 
-// USB Battery pack dimensions (adjust for your battery)
-battery_width = 60;         // Width in mm
-battery_length = 90;        // Length in mm
-battery_height = 15;        // Height/thickness in mm
+// USB Battery pack dimensions (2 3/4 x 4 1/2 x 5/8 inches)
+battery_width = 70;         // Width in mm (2.75 in = 69.8mm)
+battery_length = 115;       // Length in mm (4.5 in = 114.3mm)
+battery_height = 16;        // Height/thickness in mm (5/8 in = 15.9mm)
 
 // Box parameters
 wall_thickness = 2;         // Wall thickness in mm
@@ -32,17 +32,20 @@ top_clearance = 2;          // Space above components in mm
 mounting_hole_diameter = 3; // For screws/bolts
 add_ventilation = true;     // Add ventilation slots
 add_cable_channels = true;  // Add cable management channels
-lid_type = "snap";          // "snap" or "screw"
+lid_type = "screw";         // "snap" or "screw" - SCREW for easy battery access
 display_tilt_angle = 15;    // Angle of LED matrix tilt (degrees) - plaque style
 
 // Nutcracker mounting holes (to mount nutcracker to box)
 nutcracker_mount_hole_spacing_x = 50; // Horizontal spacing between mounting holes
-nutcracker_mount_hole_spacing_y = 70; // Vertical spacing between mounting holes
+nutcracker_mount_hole_spacing_y = 60; // Vertical spacing (adjusted for 71.4mm nutcracker base)
 nutcracker_mount_hole_diameter = 4;   // Diameter for nutcracker mounting screws
 
 // Pi mounting holes (Pi 3B standard mounting)
 pi_mount_hole_diameter = 2.75;        // M2.5 screw holes
 pi_standoff_height = 5;               // Height of mounting standoffs
+
+// Battery access
+battery_access_cutout = true;         // Add large cutout in lid for battery access
 
 // Curved display parameters (for flexible matrix)
 use_curved_display = true;  // Use cylindrical curve instead of flat plaque
@@ -50,6 +53,7 @@ curve_radius = 120;         // Radius of curve in mm (smaller = tighter curve)
 curve_segments = 60;        // Resolution of curve (higher = smoother)
 split_curved_display = true; // Split curved display into 2 printable halves
 alignment_pin_diameter = 3;  // Diameter of alignment pins for joining halves
+use_removable_cover = true;  // Use removable clear cover instead of fixed clips (for connectors on back)
 
 // === CALCULATED DIMENSIONS ===
 // Main box holds battery and Pi Zero
@@ -164,6 +168,18 @@ module main_box() {
                    wall_thickness + bottom_clearance + pi_standoff_height + 5])
             cube([16, wall_thickness + 2, 10]);
         
+        // Display mounting screw holes (M3 screws from inside box)
+        // These align with the curved display mounting tabs
+        display_mount_hole_spacing = 60; // Distance between mounting holes
+        translate([box_width/2 - display_mount_hole_spacing/2, 
+                   wall_thickness - 1, 
+                   box_height - 5])
+            cylinder(h = wall_thickness + 2, d = 3.2, $fn=20);
+        translate([box_width/2 + display_mount_hole_spacing/2, 
+                   wall_thickness - 1, 
+                   box_height - 5])
+            cylinder(h = wall_thickness + 2, d = 3.2, $fn=20);
+        
         // Ventilation slots (sides)
         if (add_ventilation) {
             for (i = [0:3]) {
@@ -175,11 +191,13 @@ module main_box() {
             }
         }
         
-        // Mounting holes in bottom corners
-        for (x = [wall_thickness + 5, box_width - wall_thickness - 5])
-            for (y = [wall_thickness + 5, box_length - wall_thickness - 5])
-                translate([x, y, -1])
-                    cylinder(h = wall_thickness + 2, d = mounting_hole_diameter, $fn=20);
+        // Mounting holes in bottom corners (for lid screws)
+        if (lid_type == "screw") {
+            for (x = [wall_thickness + 5, box_width - wall_thickness - 5])
+                for (y = [wall_thickness + 5, box_length - wall_thickness - 5])
+                    translate([x, y, -1])
+                        cylinder(h = wall_thickness + 2, d = mounting_hole_diameter, $fn=20);
+        }
     }
     
     // Internal component supports
@@ -238,32 +256,34 @@ module curved_display_half(is_left=true) {
 module curved_display() {
     matrix_channel_depth = led_matrix_depth + 1; // Channel to hold flexible matrix
     total_height = led_matrix_height + wall_thickness * 2;
+    clip_depth = 1.5; // How far clips overlap the matrix
     
     difference() {
         union() {
-            // Curved front face
+            // Curved back panel (matrix mounts to this)
             rotate([90, 0, 0])
             rotate([0, 0, 90])
             linear_extrude(height = total_height, center = false)
-            difference() {
-                // Outer arc
-                arc_segment(curve_radius + wall_thickness, curve_angle, curve_segments);
-                // Inner arc (channel for matrix)
-                arc_segment(curve_radius, curve_angle, curve_segments);
-            }
+                arc_segment(curve_radius + wall_thickness/2, curve_angle, curve_segments);
             
-            // Top edge cap
+            // Top edge frame
             translate([0, 0, total_height - wall_thickness])
             rotate([90, 0, 0])
             rotate([0, 0, 90])
             linear_extrude(height = wall_thickness)
-                arc_segment(curve_radius + wall_thickness, curve_angle, curve_segments);
+                difference() {
+                    arc_segment(curve_radius + wall_thickness + 3, curve_angle, curve_segments);
+                    arc_segment(curve_radius - 2, curve_angle, curve_segments);
+                }
             
-            // Bottom edge cap
+            // Bottom edge frame
             rotate([90, 0, 0])
             rotate([0, 0, 90])
             linear_extrude(height = wall_thickness)
-                arc_segment(curve_radius + wall_thickness, curve_angle, curve_segments);
+                difference() {
+                    arc_segment(curve_radius + wall_thickness + 3, curve_angle, curve_segments);
+                    arc_segment(curve_radius - 2, curve_angle, curve_segments);
+                }
             
             // Side caps
             for (side = [0, 1]) {
@@ -276,6 +296,18 @@ module curved_display() {
             // Mounting base
             translate([-curve_chord_width/2 - wall_thickness, -curve_arc_depth - wall_thickness, -wall_thickness])
                 cube([curve_chord_width + wall_thickness * 2, wall_thickness * 2, wall_thickness]);
+            
+            // Mounting tabs with screw holes
+            for (x = [-curve_chord_width/4, curve_chord_width/4]) {
+                translate([x - 6, -curve_arc_depth - wall_thickness, -wall_thickness])
+                    cube([12, wall_thickness * 2, wall_thickness + 3]);
+            }
+        }
+        
+        // Mounting screw holes in tabs (M3 screws)
+        for (x = [-curve_chord_width/4, curve_chord_width/4]) {
+            translate([x, -curve_arc_depth, -wall_thickness - 1])
+                cylinder(h = wall_thickness + 5, d = 3.2, $fn=20);
         }
         
         // Wire pass-through holes at bottom
@@ -290,6 +322,39 @@ module curved_display() {
         rotate([0, 0, rib_angle])
         translate([0, -curve_radius - wall_thickness/2, wall_thickness])
             cube([0.8, wall_thickness, led_matrix_height]);
+    }
+}
+
+// === REMOVABLE CLEAR COVER FOR LED MATRIX ===
+module matrix_cover() {
+    total_height = led_matrix_height + wall_thickness * 2;
+    cover_thickness = 1.5;
+    
+    difference() {
+        union() {
+            // Curved clear front panel
+            rotate([90, 0, 0])
+            rotate([0, 0, 90])
+            linear_extrude(height = total_height - wall_thickness * 2, center = false)
+                arc_segment(curve_radius + wall_thickness + 2, curve_angle, curve_segments);
+            
+            // Top clip tabs (snap into frame)
+            num_clips = 4;
+            for (i = [0 : num_clips - 1]) {
+                clip_angle = -curve_angle/2 + ((i + 0.5) * curve_angle / num_clips);
+                rotate([0, 0, clip_angle])
+                translate([-1.5, -curve_radius - wall_thickness - 3.5, total_height - wall_thickness - 0.5])
+                    cube([3, 1, 2]);
+            }
+            
+            // Bottom clip tabs
+            for (i = [0 : num_clips - 1]) {
+                clip_angle = -curve_angle/2 + ((i + 0.5) * curve_angle / num_clips);
+                rotate([0, 0, clip_angle])
+                translate([-1.5, -curve_radius - wall_thickness - 3.5, wall_thickness - 1.5])
+                    cube([3, 1, 2]);
+            }
+        }
     }
 }
 
@@ -383,6 +448,14 @@ module lid() {
                         cylinder(h = wall_thickness + 2, d = mounting_hole_diameter + 0.5, $fn=20);
         }
         
+        // Battery access cutout (large opening for connecting wires)
+        if (battery_access_cutout) {
+            translate([wall_thickness + component_spacing + 5, 
+                       wall_thickness + component_spacing + 5, 
+                       -1])
+                cube([battery_width - 10, battery_length - 10, wall_thickness + 2]);
+        }
+        
         // Ventilation holes in lid
         for (x = [0:3])
             for (y = [0:4])
@@ -396,32 +469,44 @@ module lid() {
 // === RENDER SELECTION ===
 // Comment/uncomment to choose what to render
 
-// For printing - all parts laid flat
+// RENDER INDIVIDUAL PARTS (uncomment one at a time)
+// Part 1: Main box only
 main_box();
 
-translate([box_width + 10, 0, 0])
-    lid();
+// Part 2: Lid only
+//lid();
 
-if (use_curved_display) {
-    if (split_curved_display) {
-        // Print left half
-        translate([0, box_length + 60, 0])
-            curved_display_half(is_left=true);
-        
-        // Print right half
-        translate([curve_chord_width/2 + 20, box_length + 60, 0])
-            curved_display_half(is_left=false);
-    } else {
-        translate([110, box_length + 60, 0])
-            curved_display();
-    }
-} else {
-    translate([box_width/2 - (led_matrix_width + wall_thickness * 2 + component_spacing * 2)/2, 
-               box_length + 20, 
-               0])
-        rotate([-display_tilt_angle, 0, 0])
-            display_plaque();
-}
+// Part 3: Display left half only
+//if (use_curved_display && split_curved_display) {
+//    curved_display_half(is_left=true);
+//}
+
+// Part 4: Display right half only
+//if (use_curved_display && split_curved_display) {
+//    curved_display_half(is_left=false);
+//}
+
+// Part 5: Display cover only
+//if (use_curved_display && use_removable_cover) {
+//    matrix_cover();
+//}
+
+// ALL PARTS TOGETHER (too big for bed!)
+//main_box();
+//translate([box_width + 10, 0, 0])
+//    lid();
+//if (use_curved_display) {
+//    if (split_curved_display) {
+//        translate([0, box_length + 60, 0])
+//            curved_display_half(is_left=true);
+//        translate([curve_chord_width/2 + 20, box_length + 60, 0])
+//            curved_display_half(is_left=false);
+//        if (use_removable_cover) {
+//            translate([0, box_length + 160, 0])
+//                matrix_cover();
+//        }
+//    }
+//}
 
 // For assembly preview, uncomment below and comment above
 // main_box();

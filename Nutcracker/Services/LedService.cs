@@ -584,6 +584,14 @@ public class LedService : IDisposable
 		UpdateDisplay();
 		await Task.CompletedTask;
 	}
+	
+	/// <summary>
+	/// Public method to clear all LEDs (for external access)
+	/// </summary>
+	public async Task ClearAllLedsPublic()
+	{
+		await ClearAllLeds();
+	}
 
 	/// <summary>
 	/// Matrix-specific helper methods

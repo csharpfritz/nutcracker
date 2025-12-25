@@ -81,6 +81,157 @@ html, body {
     text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
 }
 
+/* LED Power Section */
+.led-power-section {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    border-radius: 15px;
+    padding: 25px;
+    margin-bottom: 30px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    border: 2px solid #FFD700;
+}
+
+.rocker-switch-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+}
+
+.rocker-label {
+    color: #FFD700;
+    font-size: 1.3rem;
+    font-weight: bold;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* Rocker Switch Styling */
+.rocker {
+    display: inline-block;
+    font-size: 2em;
+    font-weight: bold;
+    text-align: center;
+    text-transform: uppercase;
+    color: #888;
+    width: 7em;
+    height: 4em;
+    overflow: hidden;
+    border-bottom: 0.5em solid #eee;
+    border-radius: 0.5em;
+    box-shadow: 0 0.5em 1em rgba(0, 0, 0, 0.2);
+    position: relative;
+}
+
+.rocker-small {
+    font-size: 0.75em;
+}
+
+.rocker::before {
+    content: "";
+    position: absolute;
+    top: 0.5em;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #999;
+    border: 0.5em solid #eee;
+    border-bottom: 0;
+    border-radius: 0.5em 0.5em 0 0;
+}
+
+.rocker input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.switch-left,
+.switch-right {
+    cursor: pointer;
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 2.5em;
+    width: 3em;
+    transition: 0.2s;
+    user-select: none;
+}
+
+.switch-left {
+    height: 2.4em;
+    width: 2.75em;
+    left: 0.85em;
+    bottom: 0.4em;
+    background-color: #ddd;
+    transform: rotate(15deg) translateX(-0.2em);
+    transform-origin: bottom;
+    border-radius: 0.5em;
+}
+
+.switch-right {
+    height: 2.4em;
+    width: 2.75em;
+    right: 0.5em;
+    bottom: 0.4em;
+    background-color: #bd5757;
+    color: #fff;
+    transform: rotate(-15deg) translateX(0.2em);
+    transform-origin: bottom;
+    border-radius: 0.5em;
+}
+
+.switch-left::before,
+.switch-right::before {
+    content: "";
+    position: absolute;
+    width: 0.4em;
+    height: 2.45em;
+    bottom: -0.45em;
+    background-color: #ccc;
+    transform: skewY(-65deg);
+}
+
+.switch-left::before {
+    left: -0.4em;
+}
+
+.switch-right::before {
+    right: -0.375em;
+    background-color: transparent;
+    transform: skewY(65deg);
+}
+
+input:checked + .switch-left {
+    background-color: #0084d0;
+    color: #fff;
+    bottom: 0;
+    left: 0.5em;
+    height: 2.5em;
+    width: 3em;
+    transform: rotate(0deg) translateX(0);
+}
+
+input:checked + .switch-left::before {
+    background-color: transparent;
+    width: 3.0833em;
+}
+
+input:checked + .switch-left + .switch-right {
+    background-color: #ddd;
+    color: #888;
+    bottom: 0.4em;
+    right: 0.8em;
+    height: 2.4em;
+    width: 2.75em;
+    transform: rotate(-15deg) translateX(0.2em);
+    transform-origin: bottom;
+}
+
+input:checked + .switch-left + .switch-right::before {
+    background-color: #ccc;
+}
+
 /* Test Section */
 .test-section {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);

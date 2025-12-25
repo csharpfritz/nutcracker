@@ -18,8 +18,15 @@ public class LightshowService(LedService ledService, ILogger<LightshowService> l
 	private CancellationTokenSource? _skipTokenSource;
 	private System.Diagnostics.Process? _currentMusicProcess;
 	private int _currentVolume = 70; // Default volume at 70%
+	private bool _ledsEnabled = true; // Track LED on/off state
+	private CancellationTokenSource? _idleDisplayTokenSource;
 
 	public LightshowSettings? CurrentLightshow { get; private set; } = null!;
+	
+	/// <summary>
+	/// Get whether LEDs are currently enabled
+	/// </summary>
+	public bool AreLEDsEnabled() => _ledsEnabled;
 
 	/// <summary>
 	/// Get the current volume level (0-100%)
@@ -39,6 +46,61 @@ public class LightshowService(LedService ledService, ILogger<LightshowService> l
 			logger.LogInformation($"Skipping current lightshow: {CurrentLightshow.Name}");
 			_skipTokenSource.Cancel();
 		}
+	}
+	
+	/// <summary>
+	/// Stop all lightshows, clear queue, and turn off LEDs
+	/// </summary>
+	public async Task StopAllAndClearLEDs()
+	{
+		logger.LogInformation("Stopping all lightshows and clearing LEDs");
+		_ledsEnabled = false;
+		
+		// Clear the queue
+		while (LightshowQueue.TryDequeue(out _)) { }
+		QueueChanged?.Invoke(this, EventArgs.Empty);
+		
+		// Stop current show
+		if (_skipTokenSource != null && !_skipTokenSource.IsCancellationRequested)
+		{
+			_skipTokenSource.Cancel();
+		}
+		
+		// Stop idle display if running
+		if (_idleDisplayTokenSource != null && !_idleDisplayTokenSource.IsCancellationRequested)
+		{
+			_idleDisplayTokenSource.Cancel();
+		}
+		
+		// Stop music
+		if (_currentMusicProcess != null && !_currentMusicProcess.HasExited)
+		{
+			try
+			{
+				_currentMusicProcess.Kill();
+				logger.LogInformation("Stopped music process");
+			}
+			catch (Exception ex)
+			{
+				logger.LogWarning(ex, "Error stopping music process");
+			}
+		}
+		
+		// Clear all LEDs
+		await ledService.ClearAllLedsPublic();
+	}
+	
+	/// <summary>
+	/// Enable LEDs and start the idle scrolling display
+	/// </summary>
+	public void EnableLEDsAndStartIdle()
+	{
+		logger.LogInformation("Enabling LEDs and starting idle display");
+		_ledsEnabled = true;
+		
+		// The background service will automatically start the idle display
+		// when it sees the queue is empty in the next iteration
+		QueueChanged?.Invoke(this, EventArgs.Empty);
 	}
 
 	public void SetVolume(int volume)
@@ -108,6 +170,13 @@ public class LightshowService(LedService ledService, ILogger<LightshowService> l
 
 		while (!stoppingToken.IsCancellationRequested)
 		{
+			// If LEDs are disabled, wait and skip processing
+			if (!_ledsEnabled)
+			{
+				await Task.Delay(TimeSpan.FromMilliseconds(500), stoppingToken);
+				continue;
+			}
+			
 			if (LightshowQueue.TryDequeue(out var lightshowSettings))
 			{
 				logger.LogInformation($"Starting lightshow: {lightshowSettings.Name}");
@@ -218,7 +287,8 @@ public class LightshowService(LedService ledService, ILogger<LightshowService> l
 		CurrentLightshow = IdleDisplay;
 		QueueChanged?.Invoke(this, EventArgs.Empty);
 
-		using var idleCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+		_idleDisplayTokenSource = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+		var idleCts = _idleDisplayTokenSource;
 
 		try
 		{
@@ -260,6 +330,8 @@ public class LightshowService(LedService ledService, ILogger<LightshowService> l
 		finally
 		{
 			CurrentLightshow = null;
+			_idleDisplayTokenSource?.Dispose();
+			_idleDisplayTokenSource = null;
 			QueueChanged?.Invoke(this, EventArgs.Empty);
 		}
 	}

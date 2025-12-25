@@ -172,9 +172,15 @@ wwwroot/lights/*.json - Light pattern definitions (accessed via web root)
    - Example: `new("Santa Claus Is Comin To Town", new TimeSpan(0, 4, 28), "music/bruce-springsteen.mp3", "lights/bruce-springsteen.json")`
    - Ensure paths match the actual file locations
 4. **Deploy to Pi:**
-   - Stop the service: `ssh user@pi "sudo systemctl stop nutcracker"`
-   - Build and deploy: `dotnet publish -c Release -r linux-arm64 --self-contained` (auto-deploys via post-build script)
-   - Start the service: `ssh user@pi "sudo systemctl start nutcracker"`
+   - **Quick deployment (just lightshow JSON):** 
+     ```bash
+     scp "Nutcracker/wwwroot/lights/filename.json" user@pi:/home/user/www/wwwroot/lights/filename.json
+     ```
+     Use this for rapid iteration on lightshow patterns - no service restart needed!
+   - **Full deployment:**
+     - Stop the service: `ssh user@pi "sudo systemctl stop nutcracker"`
+     - Build and deploy: `dotnet publish -c Release -r linux-arm64 --self-contained` (auto-deploys via post-build script)
+     - Start the service: `ssh user@pi "sudo systemctl start nutcracker"`
 5. Pattern format should include timing, LED indices, and colors
 6. Verify in logs: `ssh user@pi "sudo journalctl -u nutcracker -n 50 --no-pager"`
 

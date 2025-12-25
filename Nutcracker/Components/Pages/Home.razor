@@ -23,6 +23,18 @@
         </div>
     }
 
+    <!-- LED Power Control -->
+    <div class="led-power-section">
+        <div class="rocker-switch-container">
+            <span class="rocker-label">LED Power:</span>
+            <label class="rocker rocker-small">
+                <input type="checkbox" @bind="ledEnabled" @bind:after="ToggleLEDs" />
+                <span class="switch-left">OFF</span>
+                <span class="switch-right">ON</span>
+            </label>
+        </div>
+    </div>
+
     <!-- Now Playing Section -->
     <div class="now-playing-section">
         <h2 class="section-title">🎵 Now Playing</h2>
@@ -125,6 +137,7 @@
     private bool showSettings = false;
     private int volume = 70; // Will be synchronized in OnInitialized
     private int brightness = 10; // Will be synchronized in OnInitialized
+    private bool ledEnabled = true; // LED power state
 
     protected override void OnInitialized()
     {
@@ -133,6 +146,7 @@
         // Synchronize sliders with actual service values
         volume = LightshowService.GetVolume();
         brightness = LedService.GetBrightness();
+        ledEnabled = LightshowService.AreLEDsEnabled();
         
         // Subscribe to service events
         LightshowService.LightshowStarted += OnLightshowChanged;
@@ -176,6 +190,30 @@
         LedService.SetBrightness(brightness);
     }
 
+    private async Task ToggleLEDs()
+    {
+        try
+        {
+            if (ledEnabled)
+            {
+                // Turn LEDs ON - start scrolling Merry Christmas
+                Console.WriteLine("Enabling LEDs and starting idle display...");
+                LightshowService.EnableLEDsAndStartIdle();
+            }
+            else
+            {
+                // Turn LEDs OFF - stop everything and clear
+                Console.WriteLine("Disabling LEDs and stopping all shows...");
+                await LightshowService.StopAllAndClearLEDs();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"ToggleLEDs failed: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+        }
+    }
+    
     private async Task TestLeds()
     {
         try
